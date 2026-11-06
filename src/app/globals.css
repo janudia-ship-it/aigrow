@@ -1,0 +1,196 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+
+   /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ── Brand
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+   --color-primary: #004c4b;
+   --color-primary-dark: #000000;
+   --color-primary-teal-medium: #007a78;
+
+   /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ── Scaffold backgrounds
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+   --color-scaffold-light: #f1f5ef;
+   --color-scaffold-dark: #0d0d0d;
+
+   /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ── Surface / card
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+   --color-surface-light: #ffffff;
+   --color-surface-dark: #1a1a1a;
+
+   /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ── Text
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+   --color-text-primary-light: #000000;
+   --color-text-primary-dark: #ffffff;
+   --color-text-secondary-light: #004c4b;
+   --color-text-secondary-dark: #a0a0a0;
+   --color-text-hint-light: #9e9e9e;
+   --color-text-hint-dark: #6e6e6e;
+   --color-text-muted: #64748b;
+   --color-text-subtle: #94a3b8;
+   --color-text-slate-dark: #0f172a;
+   --color-text-slate-heading: #1e293b;
+   --color-text-slate-medium: #475569;
+   --color-text-slate-body: #334155;
+   --color-text-teal-muted: #5a7a77;
+
+   /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ── Input fields
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+   --color-input-fill-light: #ffffff;
+   --color-input-fill-dark: #232323;
+   --color-input-border-light: #d8e0d6;
+   --color-input-border-dark: #333333;
+
+   /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ── Dividers / Outlines / Borders
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+   --color-outline-light: #d8e0d6;
+   --color-outline-dark: #2c2c2c;
+   --color-card-border-light: #e2e8f0;
+   --color-divider-light: #cbd5e1;
+
+   /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ── Additional Surfaces & Slate backgrounds
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+   --color-card-light: #ffffff;
+   --color-slate-bg-light: #f8fafc;
+   --color-slate-surface-light: #f1f5f9;
+   --color-time-slate: #5a6987;
+
+   /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ── Fertigation & Tank backgrounds / accents
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+   --color-fertigating-bg-light: #ebf6f3;
+   --color-fertigating-bg-dark: #102a27;
+   --color-fertigating-border-light: #c3e3dd;
+   --color-fertigating-border-dark: #1e4f4a;
+   --color-fertigating-pulse-light: #f2faf6;
+   --color-fertigating-pulse-dark: #0e2522;
+
+   /* Tank badge */
+   --color-tank-badge-fertigating-bg-light: #e2f4eb;
+   --color-tank-badge-fertigating-bg-dark: #0e382e;
+   --color-tank-badge-idle-bg-light: #f1f5f9;
+   --color-tank-badge-idle-bg-dark: #23272a;
+   --color-tank-badge-idle-dot-dark: #88929a;
+
+   /* Tank painter industrial palette */
+   --color-tank-body-default: #2b3439;
+   --color-tank-water-default: #205b62;
+   --color-tank-water-surface-default: #3b858e;
+   --color-tank-stroke-default: #1c2327;
+   --color-tank-groove-default: #14191d;
+
+   /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ── Error & Danger
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+   --color-error: #d32f2f;
+   --color-danger: #dc2626;
+   --color-danger-light: #fee2e2;
+   --color-danger-dark: #7f1d1d;
+
+   /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ── Success & Status
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+   --color-success: #10b981;
+   --color-success-light: #d1fae5;
+   --color-success-dark: #065f46;
+
+   /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ── Warning & Amber
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+   --color-warning: #d97706;
+   --color-warning-light: #fef3c7;
+   --color-warning-dark: #78350f;
+   --color-system-alert: #f59e0b;
+
+   /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ── Accents, Charts & Badges
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+   --color-accent-mint: #00e5a3;
+   --color-weather-sun: #ffc700;
+   --color-badge-teal-bg: #e6f5f2;
+   --color-badge-teal-border: #b2dfdb;
+   --color-timeline-node-bg-light: #e8f5f2;
+   --color-timeline-node-bg-dark: #132b28;
+   --color-chart-blue-primary: #2563eb;
+   --color-chart-blue-secondary: #3b82f6;
+   --color-chart-sky-primary: #0ea5e9;
+   --color-chart-sky-secondary: #38bdf8;
+   --color-chart-sky-dark: #0284c7;
+   --color-chart-blue-light: #60a5fa;
+
+   /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ── Dot indicators
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+   --color-dot-active: #004c4b;
+   /* mirrors --color-primary */
+   --color-dot-inactive-light: #bccbbb;
+   --color-dot-inactive-dark: #444444;
+
+   /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ── Links & OAuth
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+   --color-link: #004c4b;
+   --color-link-hover: #00e5a3;
+   --color-google-border: #dadce0;
+   --color-google-hover: #f8f9fa;
+
+   /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ── Shadows
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+   --shadow-card: 0 2px 12px rgba(23, 37, 37, 0.08);
+   --shadow-input: 0 1px 4px rgba(23, 37, 37, 0.06);
+   --shadow-button: 0 2px 8px rgba(0, 76, 75, 0.25);
+}
+
+:root {
+   --background: var(--color-scaffold-light);
+   --foreground: var(--color-text-primary-light);
+   --surface: var(--color-surface-light);
+   --border: var(--color-outline-light);
+   --input-fill: var(--color-input-fill-light);
+   --input-border: var(--color-input-border-light);
+   --text-heading: var(--color-primary);
+   --text-primary: var(--color-text-primary-light);
+   --text-secondary: var(--color-text-secondary-light);
+   --text-hint: var(--color-text-hint-light);
+   --card-border: var(--color-card-border-light);
+   --google-btn-bg: var(--color-surface-light);
+   --google-btn-border: var(--color-google-border);
+   --google-btn-text: var(--color-text-primary-light);
+   --google-btn-hover: var(--color-google-hover);
+}
+
+.dark,
+:root.dark,
+[data-theme="dark"] {
+   --background: var(--color-scaffold-dark);
+   --foreground: var(--color-text-primary-dark);
+   --surface: var(--color-surface-dark);
+   --border: var(--color-outline-dark);
+   --input-fill: var(--color-input-fill-dark);
+   --input-border: var(--color-input-border-dark);
+   --text-heading: var(--color-accent-mint);
+   --text-primary: var(--color-text-primary-dark);
+   --text-secondary: var(--color-text-secondary-dark);
+   --text-hint: var(--color-text-hint-dark);
+   --card-border: var(--color-outline-dark);
+   --google-btn-bg: var(--color-surface-dark);
+   --google-btn-border: var(--color-outline-dark);
+   --google-btn-text: var(--color-text-primary-dark);
+   --google-btn-hover: var(--color-input-fill-dark);
+}
+
+body {
+   background: var(--background);
+   color: var(--foreground);
+
+}
