@@ -23,8 +23,12 @@ import {
     resetPasswordSchema,
     type ResetPasswordFormData,
 } from "../schemas/auth.schema";
+import OtpInput from "./OtpInput";
+import ResendOtp from "./ResendOtp";
+import { useTranslations } from "next-intl";
 
 export default function ResetPasswordForm() {
+    const t = useTranslations("auth");
     const router = useRouter();
     const searchParams = useSearchParams();
     const emailParam = searchParams.get("email") || "";
@@ -39,6 +43,8 @@ export default function ResetPasswordForm() {
         register,
         handleSubmit,
         setValue,
+        watch,
+        clearErrors,
         formState: { errors },
     } = useForm<ResetPasswordFormData>({
         resolver: zodResolver(resetPasswordSchema),
@@ -49,6 +55,8 @@ export default function ResetPasswordForm() {
             confirmPassword: "",
         },
     });
+
+    const codeValue = watch("code") || "";
 
     // Keep email updated in form state if searchParams change
     useEffect(() => {
@@ -108,6 +116,32 @@ export default function ResetPasswordForm() {
         }
     };
 
+    const handleResendOtp = async () => {
+        const targetEmail = emailParam.trim() || watch("email")?.trim();
+
+        if (!targetEmail) {
+            throw new Error("Please enter your email to resend the code.");
+        }
+
+        const response = await fetch("/api/auth/forgot-password", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ email: targetEmail }),
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok || !result.success) {
+            throw new Error(
+                result.errorMessage ||
+                result.message ||
+                "Unable to resend verification code."
+            );
+        }
+    };
+
     return (
         <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-4">
             <img
@@ -120,8 +154,12 @@ export default function ResetPasswordForm() {
                 <div className="relative z-10 flex w-full max-w-[500px] flex-col items-center justify-center rounded-[25px] border border-primary bg-card p-8 shadow-lg">
                     {/* Header */}
                     <div className="mb-6 flex flex-col items-center justify-center gap-3 text-center">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                            <KeyRound className="h-7 w-7" />
+                        <div className="flex items-center justify-center rounded-bg-gradient-to-br from-primary to-primary/50 full">
+                            <img
+                                src="/Images/resent_link.png"
+                                alt=""
+                                className="h-35 w-35 object-contain mb-1"
+                            />
                         </div>
 
                         <h1 className="text-2xl font-bold text-primary">
@@ -168,15 +206,20 @@ export default function ResetPasswordForm() {
                         {/* If email is NOT passed in URL, allow user to input email */}
                         {!emailParam ? (
                             <div className="space-y-1">
-                                <Input
-                                    type="email"
-                                    placeholder="Enter your email"
-                                    startIcon={<Mail className="w-4 h-4 text-[var(--text-hint)]" />}
-                                    error={!!errors.email}
-                                    disabled={loading}
-                                    autoComplete="email"
-                                    {...register("email")}
-                                />
+                                <label className="text-xs font-medium text-foreground">
+                                    Email Address <span className="text-[var(--color-error)]">*</span>
+                                </label>
+                                <div className="mt-2">
+                                    <Input
+                                        type="email"
+                                        placeholder="Enter your email"
+                                        startIcon={<Mail className="w-4 h-4 text-[var(--text-hint)]" />}
+                                        error={!!errors.email}
+                                        disabled={loading}
+                                        autoComplete="email"
+                                        {...register("email")}
+                                    />
+                                </div>
                                 {errors.email && (
                                     <p className="text-xs text-red-500 pl-1">
                                         {errors.email.message}
@@ -189,51 +232,59 @@ export default function ResetPasswordForm() {
 
                         {/* Verification Code */}
                         <div className="space-y-1">
-                            <Input
-                                type="text"
-                                placeholder="Enter verification code"
-                                startIcon={<KeyRound className="w-4 h-4 text-[var(--text-hint)]" />}
-                                endIcon={<span className="text-[var(--color-error)] text-xs font-bold mr-1">*</span>}
-                                error={!!errors.code}
-                                disabled={loading}
-                                autoComplete="one-time-code"
-                                {...register("code")}
-                            />
-                            {errors.code && (
-                                <p className="text-xs text-red-500 pl-1">
-                                    {errors.code.message}
-                                </p>
-                            )}
+                            <label className="text-xs font-medium text-foreground">
+                                Verification Code <span className="text-[var(--color-error)]">*</span>
+                            </label>
+
+                            <div className="mt-2">
+                                <OtpInput
+                                    length={6}
+                                    value={codeValue}
+                                    onChange={(value) => {
+                                        setValue("code", value, { shouldValidate: true });
+                                        if (errors.code) {
+                                            clearErrors("code");
+                                        }
+                                    }}
+                                    error={errors.code?.message}
+                                    disabled={loading}
+                                />
+                            </div>
                         </div>
 
                         {/* New Password */}
                         <div className="space-y-1">
-                            <Input
-                                type={showPassword ? "text" : "password"}
-                                placeholder="Enter new password"
-                                startIcon={<Lock className="w-4 h-4 text-[var(--text-hint)]" />}
-                                endIcon={
-                                    <div className="flex items-center gap-1.5">
-                                        <span className="text-[var(--color-error)] text-xs font-bold mr-1">*</span>
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowPassword(!showPassword)}
-                                            className="p-1 rounded-md text-[var(--text-hint)] hover:text-[var(--foreground)] focus:outline-none"
-                                            aria-label={showPassword ? "Hide password" : "Show password"}
-                                        >
-                                            {showPassword ? (
-                                                <EyeOff className="w-4 h-4" />
-                                            ) : (
-                                                <Eye className="w-4 h-4" />
-                                            )}
-                                        </button>
-                                    </div>
-                                }
-                                error={!!errors.newPassword}
-                                disabled={loading}
-                                autoComplete="new-password"
-                                {...register("newPassword")}
-                            />
+                            <label className="text-xs font-medium text-foreground">
+                                New Password <span className="text-[var(--color-error)]">*</span>
+                            </label>
+                            <div className="mt-2">
+                                <Input
+                                    type={showPassword ? "text" : "password"}
+                                    placeholder="Enter your new password"
+                                    startIcon={<Lock className="w-4 h-4 text-[var(--text-hint)]" />}
+                                    endIcon={
+                                        <div className="flex items-center gap-1.5">
+                                            {/* <span className="text-[var(--color-error)] text-xs font-bold mr-1">*</span> */}
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                className="p-1 rounded-md text-[var(--text-hint)] hover:text-[var(--foreground)] focus:outline-none"
+                                                aria-label={showPassword ? "Hide password" : "Show password"}
+                                            >
+                                                {showPassword ? (
+                                                    <EyeOff className="w-4 h-4" />
+                                                ) : (
+                                                    <Eye className="w-4 h-4" />
+                                                )}
+                                            </button>
+                                        </div>
+                                    }
+                                    error={!!errors.newPassword}
+                                    disabled={loading}
+                                    autoComplete="new-password"
+                                    {...register("newPassword")}
+                                />
+                            </div>
                             {errors.newPassword && (
                                 <p className="text-xs text-red-500 pl-1">
                                     {errors.newPassword.message}
@@ -243,32 +294,37 @@ export default function ResetPasswordForm() {
 
                         {/* Confirm Password */}
                         <div className="space-y-1">
-                            <Input
-                                type={showConfirmPassword ? "text" : "password"}
-                                placeholder="Confirm new password"
-                                startIcon={<Lock className="w-4 h-4 text-[var(--text-hint)]" />}
-                                endIcon={
-                                    <div className="flex items-center gap-1.5">
-                                        <span className="text-[var(--color-error)] text-xs font-bold mr-1">*</span>
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                            className="p-1 rounded-md text-[var(--text-hint)] hover:text-[var(--foreground)] focus:outline-none"
-                                            aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-                                        >
-                                            {showConfirmPassword ? (
-                                                <EyeOff className="w-4 h-4" />
-                                            ) : (
-                                                <Eye className="w-4 h-4" />
-                                            )}
-                                        </button>
-                                    </div>
-                                }
-                                error={!!errors.confirmPassword}
-                                disabled={loading}
-                                autoComplete="new-password"
-                                {...register("confirmPassword")}
-                            />
+                            <label className="text-xs font-medium text-foreground">
+                                Confirm Password <span className="text-[var(--color-error)]">*</span>
+                            </label>
+                            <div className="mt-2">
+                                <Input
+                                    type={showConfirmPassword ? "text" : "password"}
+                                    placeholder="Enter your confirm password"
+                                    startIcon={<Lock className="w-4 h-4 text-[var(--text-hint)]" />}
+                                    endIcon={
+                                        <div className="flex items-center gap-1.5">
+                                            {/* <span className="text-[var(--color-error)] text-xs font-bold mr-1">*</span> */}
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                                className="p-1 rounded-md text-[var(--text-hint)] hover:text-[var(--foreground)] focus:outline-none"
+                                                aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                                            >
+                                                {showConfirmPassword ? (
+                                                    <EyeOff className="w-4 h-4" />
+                                                ) : (
+                                                    <Eye className="w-4 h-4" />
+                                                )}
+                                            </button>
+                                        </div>
+                                    }
+                                    error={!!errors.confirmPassword}
+                                    disabled={loading}
+                                    autoComplete="new-password"
+                                    {...register("confirmPassword")}
+                                />
+                            </div>
                             {errors.confirmPassword && (
                                 <p className="text-xs text-red-500 pl-1">
                                     {errors.confirmPassword.message}
@@ -291,14 +347,21 @@ export default function ResetPasswordForm() {
                             )}
                         </Button>
 
-                        <div className="flex items-center justify-between pt-2 text-xs sm:text-sm">
-                            <Link
-                                href="/forgot-password"
-                                className="text-muted-foreground hover:text-primary transition-colors"
-                            >
-                                Resend code
-                            </Link>
+                        <div className="relative my-2">
+                            <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t border-[var(--color-outline-light)] dark:border-[var(--color-outline-dark)]" />
+                            </div>
+                        </div>
 
+                        <div className="pt-1">
+                            <ResendOtp
+                                onResend={handleResendOtp}
+                                initialSeconds={30}
+                                disabled={loading}
+                            />
+                        </div>
+
+                        <div className="flex items-center justify-center pt-2 text-xs sm:text-sm">
                             <Link
                                 href="/login"
                                 className="inline-flex items-center gap-1.5 font-medium text-primary hover:underline transition-colors"

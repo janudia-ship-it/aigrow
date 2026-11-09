@@ -7,14 +7,16 @@ interface ResendOtpProps {
     onResend: () => Promise<void>;
     initialSeconds?: number;
     disabled?: boolean;
+    startImmediately?: boolean;
 }
 
 export default function ResendOtp({
     onResend,
     initialSeconds = 30,
     disabled = false,
+    startImmediately = false,
 }: ResendOtpProps) {
-    const [countdown, setCountdown] = useState(initialSeconds);
+    const [countdown, setCountdown] = useState(startImmediately ? initialSeconds : 0);
     const [isResending, setIsResending] = useState(false);
     const [error, setError] = useState("");
 

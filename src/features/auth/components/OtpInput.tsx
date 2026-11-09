@@ -92,8 +92,8 @@ export default function OtpInput({
     };
 
     return (
-        <div className="w-full space-y-2">
-            <div className="flex justify-center gap-2 sm:gap-3">
+        <div className="w-full space-y-1">
+            <div className="flex gap-3 sm:gap-3">
                 {otpArray.map((digit, index) => (
                     <input
                         key={index}
@@ -119,9 +119,9 @@ export default function OtpInput({
                             handlePaste(e.clipboardData.getData("text"));
                         }}
                         className={`
-                        h-12 w-11 sm:h-14 sm:w-14
+                        h-11 w-11 sm:h-14 sm:w-14
                         rounded-lg border text-center
-                        text-xl font-semibold
+                        text-xl font-semibold bg-white
                         outline-none transition-all
                         ${error
                                 ? "border-red-500 focus:border-red-500"

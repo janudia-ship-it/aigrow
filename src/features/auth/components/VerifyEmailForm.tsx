@@ -48,18 +48,17 @@ export function VerifyEmailForm() {
     return (
         <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-4">
             <img
-                src="/Images/g.png"
+                src="/Images/bg.png"
                 alt=""
                 className="pointer-events-none absolute bottom-0 right-0 h-auto w-[400px] object-contain"
             />
             <div className="relative z-10 h-[600px] w-full max-w-[500px] rounded-[25px] bg-card p-8 border border-primary shadow-lg ">
                 <div className="mb-4 flex justify-center">
-                    <div className="flex items-center justify-center rounded-bg-gradient-to-br from-primary to-primary/50 full ">
-                        {/* <MailCheck size={70} strokeWidth={1.5} className="text-primary-foreground" /> */}
+                    <div className="flex items-center justify-center rounded-bg-gradient-to-br from-primary to-primary/50 full">
                         <img src="/Images/Email verify.png" className="w-50 h-40" />
                     </div>
                 </div>
-                <h1 className="text-2xl text-center font-semibold tracking-light text-primary">Verify your email</h1>
+                <h1 className="text-2xl text-center font-bold tracking-light text-primary">Verify your email</h1>
                 <p className="text-hint text-center text-sm mt-2 ">
                     We’ve sent a verification email to <br />
                     <span className="text-primary font-semibold">{email}</span>.
@@ -81,7 +80,7 @@ export function VerifyEmailForm() {
                         type="button"
                         onClick={handleSubmit}
                         disabled={otp.length !== 6 || isVerifying}
-                        className="w-full rounded-lg bg-primary
+                        className="w-full rounded-full bg-primary
                         py-3 font-semibold text-white
                         hover:bg-primary
                         disabled:cursor-not-allowed

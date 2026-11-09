@@ -42,7 +42,7 @@ export function DashboardView({ user }: { user: UserProfile }) {
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
-      {/* Top Navigation Bar */}
+      {/* Top Navigation Bar
       <header className="sticky top-0 z-30 bg-[var(--surface)] border-b border-[var(--border)] shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -82,7 +82,7 @@ export function DashboardView({ user }: { user: UserProfile }) {
             </Button>
           </div>
         </div>
-      </header>
+      </header> */}
 
       {/* Main Dashboard Area */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
