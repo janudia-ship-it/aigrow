@@ -27,29 +27,42 @@ export async function PUT(request: NextRequest) {
     try {
       const result = await updateProfileApi(validation.data, accessToken);
       updatedUser = result.user;
-    } catch {
-      // In case the backend mock or service updates partially, retain cookie update
-      const existingUserStr = cookieStore.get(USER_PROFILE_COOKIE)?.value;
-      if (existingUserStr) {
-        try {
-          const parsed = JSON.parse(existingUserStr);
-          updatedUser = {
-            ...parsed,
-            ...validation.data,
-          };
-        } catch {
-          updatedUser = validation.data;
-        }
-      }
+    } catch (backendError) {
+      console.error("Backend updateProfileApi error:", backendError);
+      return NextResponse.json(
+        {
+          success: false,
+          errorMessage:
+            backendError instanceof Error
+              ? backendError.message
+              : "Failed to update profile on backend.",
+        },
+        { status: 400 }
+      );
     }
 
     if (updatedUser) {
-      cookieStore.set(USER_PROFILE_COOKIE, JSON.stringify(updatedUser), {
+      const existingUserStr = cookieStore.get(USER_PROFILE_COOKIE)?.value;
+      let mergedUser = updatedUser;
+      if (existingUserStr) {
+        try {
+          const parsed = JSON.parse(existingUserStr);
+          mergedUser = {
+            ...parsed,
+            ...updatedUser,
+          };
+        } catch {
+          mergedUser = updatedUser;
+        }
+      }
+
+      cookieStore.set(USER_PROFILE_COOKIE, JSON.stringify(mergedUser), {
         httpOnly: false,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
         path: "/",
       });
+      updatedUser = mergedUser;
     }
 
     return NextResponse.json(

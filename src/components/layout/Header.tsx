@@ -16,6 +16,7 @@ import { ThemeSwitcher } from "./ThemeSwitcher";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import type { UserProfile } from "@/features/auth/types/auth.types";
 
+
 interface HeaderProps {
     user?: UserProfile | null;
 }
@@ -44,7 +45,12 @@ export function Header({ user }: HeaderProps) {
     };
 
     return (
-        <header className="h-[76px] w-full bg-white border border-gray-200 rounded-xl flex items-center justify-between px-6 md:px-10 shadow-sm">
+        <header className=" h-[76px] w-full
+    bg-white dark:bg-[#0d0d0d]
+    border border-gray-200 dark:border-gray-800
+    rounded-xl flex items-center justify-between
+    px-6 md:px-10 shadow-sm
+    transition-colors duration-200">
 
             {/* Left: Logo */}
             <Link href="/dashboard" className="flex items-center">

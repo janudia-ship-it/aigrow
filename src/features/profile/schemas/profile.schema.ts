@@ -24,9 +24,11 @@ export const profileDetailsSchema = z.object({
   userName: z.string().trim().min(1, "Username is required"),
   email: z.string().trim().email("Enter a valid email address"),
   countryCode: z.string().min(1, "Country code is required"),
-  country: z.string().optional(),
-  phoneNumber: z.string().optional(),
-  address: z.string().optional(),
+  country: z.string().optional().nullable(),
+  phoneNumber: z.string().optional().nullable(),
+  address: z.string().optional().nullable(),
+  removeProfilePicture: z.boolean().optional(),
+  profilePicture: z.any().optional().nullable(),
 });
 
 export type ProfileDetailsFormData = z.infer<typeof profileDetailsSchema>;

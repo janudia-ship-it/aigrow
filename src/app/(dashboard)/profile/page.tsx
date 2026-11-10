@@ -1,5 +1,6 @@
 import { getAuthSession } from "@/lib/auth/session";
 import { ProfileView } from "@/features/profile/components/ProfileView";
+import { getMyProfileApi } from "@/features/profile/services/profile-api";
 
 export const metadata = {
     title: "My Profile - AiGrow",
@@ -7,10 +8,20 @@ export const metadata = {
 };
 
 export default async function ProfilePage() {
-    const { user } = await getAuthSession();
+    const { accessToken, user } = await getAuthSession();
+
+    let currentUser = user;
+    if (accessToken) {
+        try {
+            currentUser = await getMyProfileApi(accessToken);
+        } catch {
+            // fallback to session user if API is offline
+            currentUser = user;
+        }
+    }
 
     // Fallback demo user if not logged in yet during development
-    const currentUser = user || {
+    const resolvedUser = currentUser || {
         id: 1,
         userName: "Olivia Green",
         firstName: "Olivia",
@@ -23,6 +34,6 @@ export default async function ProfilePage() {
         profilePictureUrl: "/Images/default image.jpg",
     };
 
-    return <ProfileView user={currentUser} />;
+    return <ProfileView user={resolvedUser} />;
 }
 

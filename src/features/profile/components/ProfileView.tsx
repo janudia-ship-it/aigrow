@@ -72,6 +72,8 @@ export function ProfileView({ user }: ProfileViewProps) {
   const [profileError, setProfileError] = useState("");
   const [profileLoading, setProfileLoading] = useState(false);
 
+
+
   // Profile Details Form
   const {
     register: registerProfile,
@@ -131,11 +133,12 @@ export function ProfileView({ user }: ProfileViewProps) {
       const result = await response.json().catch(() => ({}));
 
       if (!response.ok || !result.success) {
+
         throw new Error(result.errorMessage || "Failed to update profile.");
       }
 
       setProfileSuccess(result.message || "Profile updated successfully!");
-      router.refresh();
+      // router.refresh();
       setTimeout(() => setProfileSuccess(""), 4000);
     } catch (err) {
       setProfileError(
@@ -168,16 +171,26 @@ export function ProfileView({ user }: ProfileViewProps) {
       if (!response.ok || !result.success) {
         throw new Error(
           result.errorMessage ||
-            result.message ||
-            "Unable to change password. Please verify current password."
+          result.message ||
+          "Unable to change password. Please verify current password."
         );
       }
 
       setPasswordSuccess(
-        result.message || "Password updated successfully!"
+        result.message || "Password updated successfully! Redirecting to login..."
       );
       resetPasswordForm();
-      setTimeout(() => setPasswordSuccess(""), 4000);
+
+      // Logout and redirect to login page prompting the user to login again
+      setTimeout(async () => {
+        try {
+          await fetch("/api/auth/logout", { method: "POST" });
+        } catch {
+          // Continue to login even if logout request fails
+        }
+        router.push("/login?reset=true");
+        router.refresh();
+      }, 1500);
     } catch (err) {
       setPasswordError(
         err instanceof Error ? err.message : "Something went wrong."
@@ -224,7 +237,7 @@ export function ProfileView({ user }: ProfileViewProps) {
             <div className="relative">
               <div className="relative h-28 w-28 sm:h-32 sm:w-32 rounded-full border-4 border-white bg-white shadow-lg overflow-hidden">
                 <Image
-                  src={user.profilePictureUrl || "/Images/g.png"}
+                  src={user.profilePictureUrl || "/Images/bg.png"}
                   alt={displayName}
                   fill
                   className="object-cover"
@@ -553,9 +566,8 @@ export function ProfileView({ user }: ProfileViewProps) {
             <div className="space-y-2 py-1 text-xs text-gray-600">
               <div className="flex items-center gap-2">
                 <Check
-                  className={`h-3.5 w-3.5 transition-colors ${
-                    hasMinLength ? "text-emerald-600 font-bold" : "text-gray-400"
-                  }`}
+                  className={`h-3.5 w-3.5 transition-colors ${hasMinLength ? "text-emerald-600 font-bold" : "text-gray-400"
+                    }`}
                 />
                 <span className={hasMinLength ? "text-emerald-700 font-medium" : ""}>
                   At least 8 Characters.
@@ -563,9 +575,8 @@ export function ProfileView({ user }: ProfileViewProps) {
               </div>
               <div className="flex items-center gap-2">
                 <Check
-                  className={`h-3.5 w-3.5 transition-colors ${
-                    hasNumber ? "text-emerald-600 font-bold" : "text-gray-400"
-                  }`}
+                  className={`h-3.5 w-3.5 transition-colors ${hasNumber ? "text-emerald-600 font-bold" : "text-gray-400"
+                    }`}
                 />
                 <span className={hasNumber ? "text-emerald-700 font-medium" : ""}>
                   Include at least one number.
@@ -573,9 +584,8 @@ export function ProfileView({ user }: ProfileViewProps) {
               </div>
               <div className="flex items-center gap-2">
                 <Check
-                  className={`h-3.5 w-3.5 transition-colors ${
-                    hasSpecial ? "text-emerald-600 font-bold" : "text-gray-400"
-                  }`}
+                  className={`h-3.5 w-3.5 transition-colors ${hasSpecial ? "text-emerald-600 font-bold" : "text-gray-400"
+                    }`}
                 />
                 <span className={hasSpecial ? "text-emerald-700 font-medium" : ""}>
                   Include special character.

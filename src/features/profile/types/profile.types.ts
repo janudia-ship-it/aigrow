@@ -1,3 +1,5 @@
+import type { UserProfile } from "@/features/auth/types/auth.types";
+
 export interface ChangePasswordRequest {
   currentPassword: string;
   newPassword: string;
@@ -14,12 +16,15 @@ export interface ChangePasswordResponse {
 export interface UpdateProfileRequest {
   firstName: string;
   lastName: string;
-  userName: string;
-  email: string;
+  phoneNumber?: string | null;
+  country?: string | null;
+  address?: string | null;
+  profilePicture?: File | Blob | null;
+  removeProfilePicture?: boolean;
+  // Form fields from client UI:
+  userName?: string;
+  email?: string;
   countryCode?: string;
-  country?: string;
-  phoneNumber?: string;
-  address?: string;
 }
 
 export interface UpdateProfileResponse {
@@ -27,6 +32,7 @@ export interface UpdateProfileResponse {
   errorCode?: number;
   errorMessage?: string;
   message?: string;
-  user?: import("@/features/auth/types/auth.types").UserProfile;
+  user?: UserProfile;
 }
+
 

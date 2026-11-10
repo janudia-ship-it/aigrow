@@ -48,8 +48,16 @@ export function Sidebar() {
         }
     };
 
+
     return (
-        <aside className="relative w-[196px] h-full shrink-0 flex-col justify-between rounded-xl bg-white px-4 py-6">
+        <aside className="
+                w-[196px] shrink-0
+    min-h-full
+    flex flex-col justify-between
+    rounded-xl px-4 py-6
+    bg-white dark:bg-[#0d0d0d]
+    border border-gray-200 dark:border-gray-800
+        ">
 
             {/* Navigation */}
             <nav className="space-y-2">
@@ -66,8 +74,8 @@ export function Sidebar() {
                             key={item.href}
                             href={item.href}
                             className={`flex items-center gap-4 rounded-lg px-4 py-3 text-sm transition-all duration-200 ${isActive
-                                ? "bg-[#004C4B] text-white"
-                                : "text-[#004C4B] hover:bg-[#E8F2EF]"
+                                ? "bg-[#004C4B] text-white dark:bg-[#007A78] dark:text-white"
+                                : "text-[#004C4B] dark:text-gray-300 hover:bg-[#E8F2EF] dark:hover:bg-gray-800"
                                 }`}
                         >
                             <Icon size={18} strokeWidth={2} />
@@ -80,11 +88,19 @@ export function Sidebar() {
             </nav>
 
             {/* Logout */}
-            <div className="border-t border-gray-200 px-3 pt-5">
+            <div className="
+                border-t border-gray-200 dark:border-gray-800
+                px-3 pt-5
+            ">
 
                 <button
                     type="button"
-                    className="flex w-full items-center gap-4 text-sm text-[#004C4B] transition hover:text-red-600"
+                    className="
+                        flex w-full items-center gap-4 text-sm
+                        text-[#004C4B] dark:text-gray-300
+                        transition-colors
+                        hover:text-red-600 dark:hover:text-red-400
+                    "
                     onClick={handleLogout}
                 >
                     <LogOut size={18} />

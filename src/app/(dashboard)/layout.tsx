@@ -25,7 +25,7 @@ export default async function DashboardLayout({
   };
 
   return (
-    <div className="min-h-screen bg-[#F4F7F6] p-4 sm:p-6 space-y-6">
+    <div className="min-h-screen p-4 sm:p-6 space-y-6">
       {/* Top Header */}
       <Header user={currentUser} />
 
