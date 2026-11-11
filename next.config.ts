@@ -12,6 +12,15 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "aigrow-images.s3.us-west-2.amazonaws.com",
+        pathname: "/users/**",
+      },
+    ],
+  },
 };
 
 export default withNextIntl(nextConfig);

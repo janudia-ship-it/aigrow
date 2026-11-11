@@ -115,7 +115,7 @@ export function LoginForm() {
           >
             <AlertCircle className="w-4 h-4 text-[var(--color-danger)] shrink-0 mt-0.5" />
             <div className="flex-1 space-y-1">
-              <p>Please Verify Your Email Address.</p>
+              <p>{t('loginError')}</p>
               {errorCode === AuthErrorCode.EMAIL_NOT_VERIFIED && (
                 <div>
                   <Link

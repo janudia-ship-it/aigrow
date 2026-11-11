@@ -5,13 +5,14 @@ import type {
   UpdateProfileRequest,
   UpdateProfileResponse,
 } from "../types/profile.types";
+import { BACKEND_URL } from "@/lib/api/api-config";
 
-const BACKEND_URL =
-  process.env.API_BASE_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  process.env.INTERNAL_BACKEND_URL ||
-  process.env.NEXT_PUBLIC_BACKEND_URL ||
-  "http://172.16.20.58:81";
+// const BACKEND_URL =
+//   process.env.API_BASE_URL ||
+//   process.env.NEXT_PUBLIC_API_URL ||
+//   process.env.INTERNAL_BACKEND_URL ||
+//   process.env.NEXT_PUBLIC_BACKEND_URL ||
+//   "http://172.16.20.58:81";
 
 export async function getMyProfileApi(
   accessToken?: string | null
@@ -126,7 +127,8 @@ export async function updateProfileApi(
   }
 
   if (data.profilePicture) {
-    formData.append("profilePicture", data.profilePicture);
+    const filename = (data.profilePicture as File).name || "profilePicture.png";
+    formData.append("profilePicture", data.profilePicture, filename);
   }
 
   const response = await fetch(url, {

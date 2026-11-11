@@ -14,11 +14,11 @@ import type {
   ResetPasswordRequest,
   ResetPasswordResponse,
 } from "../types/auth.types";
-
-const BACKEND_URL =
-  process.env.API_BASE_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  "http://172.16.20.58:81";
+import { BACKEND_URL } from "@/lib/api/api-config";
+// const BACKEND_URL =
+//   process.env.API_BASE_URL ||
+//   process.env.NEXT_PUBLIC_API_URL ||
+//   "http://172.16.20.58:81";
 
 const COUNTRY_BY_DIALING_CODE: Record<string, string> = {
   "+1": "US",

@@ -21,7 +21,6 @@ export interface UpdateProfileRequest {
   address?: string | null;
   profilePicture?: File | Blob | null;
   removeProfilePicture?: boolean;
-  // Form fields from client UI:
   userName?: string;
   email?: string;
   countryCode?: string;

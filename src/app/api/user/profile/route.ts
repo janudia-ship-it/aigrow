@@ -6,8 +6,56 @@ import { updateProfileApi } from "@/features/profile/services/profile-api";
 
 export async function PUT(request: NextRequest) {
   try {
-    const body = await request.json().catch(() => ({}));
-    const validation = profileDetailsSchema.safeParse(body);
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get(ACCESS_TOKEN_COOKIE)?.value || null;
+
+    const existingUserStr = cookieStore.get(USER_PROFILE_COOKIE)?.value;
+    let existingUser: Record<string, any> | null = null;
+    if (existingUserStr) {
+      try {
+        existingUser = JSON.parse(existingUserStr);
+      } catch {
+        existingUser = null;
+      }
+    }
+
+    let payload: Record<string, any> = {};
+    const contentType = request.headers.get("content-type") || "";
+
+    if (contentType.includes("multipart/form-data")) {
+      const formData = await request.formData();
+
+      const getStr = (key: string): string | undefined => {
+        const val = formData.get(key);
+        return typeof val === "string" ? val : undefined;
+      };
+
+      payload = {
+        firstName: getStr("firstName") ?? existingUser?.firstName ?? "",
+        lastName: getStr("lastName") ?? existingUser?.lastName ?? "",
+        userName: getStr("userName") ?? existingUser?.userName ?? "",
+        email: getStr("email") ?? existingUser?.email ?? "",
+        countryCode: getStr("countryCode") ?? existingUser?.countryCode ?? "+94",
+        country: getStr("country") ?? existingUser?.country ?? null,
+        phoneNumber: getStr("phoneNumber") ?? existingUser?.phoneNumber ?? null,
+        address: getStr("address") ?? existingUser?.address ?? null,
+        removeProfilePicture: formData.get("removeProfilePicture") === "true",
+      };
+
+      const file = formData.get("profilePicture");
+      if (
+        file &&
+        typeof file === "object" &&
+        "size" in file &&
+        (file as File).size > 0
+      ) {
+        payload.profilePicture = file as File;
+      }
+    } else {
+      payload = await request.json().catch(() => ({}));
+    }
+
+    const validation = profileDetailsSchema.safeParse(payload);
 
     if (!validation.success) {
       return NextResponse.json(
@@ -19,9 +67,6 @@ export async function PUT(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    const cookieStore = await cookies();
-    const accessToken = cookieStore.get(ACCESS_TOKEN_COOKIE)?.value || null;
 
     let updatedUser;
     try {
