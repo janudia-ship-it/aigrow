@@ -60,6 +60,8 @@
       "deactivated": "Your account has been deactivated. Please contact support.",
       "emailNotVerified": "Your email is not verified yet. Please verify your email.",
       "rateLimit": "Too many requests. Please wait a moment and try again.",
+      "sessionExpiredTitle": "Session Expired",
+      "sessionExpired": "Your session has expired because your account was logged in on another device. Please sign in again.",
       "networkError": "Unable to reach server. Please check your network connection.",
       "genericError": "An error occurred during login. Please try again."
     }

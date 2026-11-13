@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getAuthSession } from "@/lib/auth/session";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
+import { SessionGuard } from "@/components/auth/SessionGuard";
 
 export default async function DashboardLayout({
   children,
@@ -10,33 +11,23 @@ export default async function DashboardLayout({
 }) {
   const { user } = await getAuthSession();
 
-  // Fallback demo user if session is not yet loaded in development
-  const currentUser = user || {
-    id: 1,
-    userName: "Olivia Green",
-    firstName: "Olivia",
-    lastName: "Green",
-    email: "olivia.green@example.com",
-    phoneNumber: "775443467",
-    country: "LK",
-    address: "Galle, Sri Lanka",
-    role: "Farmer",
-    profilePictureUrl: "/Images/g.png",
-  };
+  if (!user) {
+    redirect("/login");
+  }
 
+  const currentUser = user;
 
   return (
-    <div className="relative min-h-screen bg-cover bg-center bg-no-repeat bg-fixed">
+    <div className="relative min-h-screen bg-cover bg-center bg-no-repeat bg-fixed dark:bg-[var(--background)]">
+      <SessionGuard />
       {/* Background Image */}
-      <div
-        className="absolute w-auto h-auto inset-0 bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: "url('/Images/bg.png')",
-        }}
+      <img
+        src="/Images/bg.png"
+        alt=""
+        className="pointer-events-none absolute bottom-0 right-0 h-auto w-[400px] object-contain"
       />
-
       {/* Background Overlay */}
-      <div className="absolute inset-0 bg-white/40" />
+      <div className="absolute inset-0" />
 
       {/* Dashboard Content */}
       <div className="relative z-10 min-h-screen p-4 sm:p-6 space-y-6">

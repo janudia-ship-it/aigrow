@@ -6,13 +6,7 @@ import type {
   UpdateProfileResponse,
 } from "../types/profile.types";
 import { BACKEND_URL } from "@/lib/api/api-config";
-
-// const BACKEND_URL =
-//   process.env.API_BASE_URL ||
-//   process.env.NEXT_PUBLIC_API_URL ||
-//   process.env.INTERNAL_BACKEND_URL ||
-//   process.env.NEXT_PUBLIC_BACKEND_URL ||
-//   "http://172.16.20.58:81";
+import { ApiError } from "@/lib/api/api-error";
 
 export async function getMyProfileApi(
   accessToken?: string | null
@@ -36,8 +30,10 @@ export async function getMyProfileApi(
   const result = await response.json().catch(() => ({}));
 
   if (!response.ok || (result && result.success === false)) {
-    throw new Error(
-      result.errorMessage || result.message || "Failed to fetch profile."
+    throw new ApiError(
+      result.errorMessage || result.message || "Failed to fetch profile.",
+      result.errorCode || (response.status === 401 ? 2008 : 0),
+      response.status
     );
   }
 
@@ -75,10 +71,12 @@ export async function changePasswordApi(
   const result = await response.json().catch(() => ({}));
 
   if (!response.ok || (result && result.success === false)) {
-    throw new Error(
+    throw new ApiError(
       result.errorMessage ||
       result.message ||
-      "Failed to change password. Please verify current password and try again."
+      "Failed to change password. Please verify current password and try again.",
+      result.errorCode || (response.status === 401 ? 2008 : 0),
+      response.status
     );
   }
 
@@ -141,10 +139,12 @@ export async function updateProfileApi(
   const result = await response.json().catch(() => ({}));
 
   if (!response.ok || (result && result.success === false)) {
-    throw new Error(
+    throw new ApiError(
       result.errorMessage ||
       result.message ||
-      `Failed to update profile details (${response.status}).`
+      `Failed to update profile details (${response.status}).`,
+      result.errorCode || (response.status === 401 ? 2008 : 0),
+      response.status
     );
   }
 

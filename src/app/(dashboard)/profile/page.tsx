@@ -1,6 +1,8 @@
-import { getAuthSession } from "@/lib/auth/session";
+import { redirect } from "next/navigation";
+import { getAuthSession, clearAuthSession } from "@/lib/auth/session";
 import { ProfileView } from "@/features/profile/components/ProfileView";
 import { getMyProfileApi } from "@/features/profile/services/profile-api";
+import { ApiError } from "@/lib/api/api-error";
 
 export const metadata = {
     title: "My Profile - AiGrow",
@@ -10,30 +12,24 @@ export const metadata = {
 export default async function ProfilePage() {
     const { accessToken, user } = await getAuthSession();
 
+    if (!accessToken || !user) {
+        redirect("/login");
+    }
+
     let currentUser = user;
     if (accessToken) {
         try {
             currentUser = await getMyProfileApi(accessToken);
-        } catch {
+        } catch (error) {
+            if (error instanceof ApiError && (error.status === 401 || error.errorCode === 2008)) {
+                await clearAuthSession();
+                redirect("/login?sessionExpired=true");
+            }
             // fallback to session user if API is offline
             currentUser = user;
         }
     }
 
-    // Fallback demo user if not logged in yet during development
-    const resolvedUser = currentUser || {
-        id: 1,
-        userName: "Olivia Green",
-        firstName: "Olivia",
-        lastName: "Green",
-        email: "olivia.green@example.com",
-        phoneNumber: "775443467",
-        country: "LK",
-        address: "Galle, Sri Lanka",
-        role: "Farmer",
-        profilePictureUrl: "/Images/default image.jpg",
-    };
-
-    return <ProfileView user={resolvedUser} />;
+    return <ProfileView user={currentUser} />;
 }
 

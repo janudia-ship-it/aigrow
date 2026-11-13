@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { ACCESS_TOKEN_COOKIE } from "@/lib/auth/session";
+import {
+  ACCESS_TOKEN_COOKIE,
+  REFRESH_TOKEN_COOKIE,
+  USER_PROFILE_COOKIE,
+  clearAuthSession,
+} from "@/lib/auth/session";
 import { changePasswordSchema } from "@/features/profile/schemas/profile.schema";
 import { changePasswordApi } from "@/features/profile/services/profile-api";
+import { ApiError } from "@/lib/api/api-error";
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,6 +34,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result, { status: 200 });
   } catch (error) {
     console.error("Change password route error:", error);
+
+    if (error instanceof ApiError && (error.status === 401 || error.errorCode === 2008)) {
+      await clearAuthSession();
+      const res = NextResponse.json(
+        {
+          success: false,
+          sessionExpired: true,
+          errorCode: error.errorCode || 2008,
+          errorMessage: error.message,
+        },
+        { status: 401 }
+      );
+      res.cookies.delete(ACCESS_TOKEN_COOKIE);
+      res.cookies.delete(REFRESH_TOKEN_COOKIE);
+      res.cookies.delete(USER_PROFILE_COOKIE);
+      return res;
+    }
+
     return NextResponse.json(
       {
         success: false,

@@ -4,6 +4,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { AppProviders } from "@/providers/AppProviders";
 import "./globals.css";
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "AiGrow - Smart Agriculture",
@@ -24,6 +25,7 @@ export default async function RootLayout({
         <NextIntlClientProvider locale={locale} messages={messages}>
           <AppProviders>
             <Suspense fallback={null}>{children}</Suspense>
+            <Toaster position="top-right" richColors />
           </AppProviders>
         </NextIntlClientProvider>
       </body>

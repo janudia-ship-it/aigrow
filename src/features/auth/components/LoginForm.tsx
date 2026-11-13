@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { User, Lock, Eye, EyeOff, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,8 +24,17 @@ export function LoginForm() {
   const searchParams = useSearchParams();
   const isVerified = searchParams.get("verified") === "true";
   const isReset = searchParams.get("reset") === "true";
+  const isSessionExpired = searchParams.get("sessionExpired") === "true";
   const [showPassword, setShowPassword] = useState(false);
   const { login, isLoading, errorMessage, errorCode } = useAuth();
+
+  useEffect(() => {
+    if (isSessionExpired) {
+      toast.error(t("errors.sessionExpired"), {
+        duration: 6000,
+      });
+    }
+  }, [isSessionExpired, t]);
 
   const {
     register,
@@ -107,6 +117,24 @@ export function LoginForm() {
           </div>
         )}
 
+        {/* Warning notification after session expired on another device */}
+        {isSessionExpired && !errorMessage && !isVerified && !isReset && (
+          <div
+            role="alert"
+            className="mb-5 p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-500/30 flex items-start gap-2.5 text-xs sm:text-sm text-amber-800 dark:text-amber-200"
+          >
+            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-semibold">
+                {t("errors.sessionExpiredTitle")}
+              </p>
+              <p className="text-xs opacity-90 mt-0.5">
+                {t("errors.sessionExpired")}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Error notification */}
         {errorMessage && (
           <div
@@ -130,6 +158,7 @@ export function LoginForm() {
                   </Link>
                 </div>
               )}
+
             </div>
           </div>
         )}

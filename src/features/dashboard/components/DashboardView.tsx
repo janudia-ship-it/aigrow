@@ -41,49 +41,7 @@ export function DashboardView({ user }: { user: UserProfile }) {
   const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.userName;
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
-      {/* Top Navigation Bar
-      <header className="sticky top-0 z-30 bg-[var(--surface)] border-b border-[var(--border)] shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="relative w-28 h-9">
-              <Image
-                src="/Aigrow-logo.png"
-                alt="AiGrow Logo"
-                fill
-                sizes="120px"
-                className="object-contain object-left"
-                priority
-              />
-            </div>
-            <span className="hidden sm:inline-block text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[var(--color-badge-teal-bg)] dark:bg-[var(--color-fertigating-bg-dark)] text-[var(--color-primary)] dark:text-[var(--color-accent-mint)] border border-[var(--color-badge-teal-border)] dark:border-[var(--color-fertigating-border-dark)]">
-              {user.role || "User"}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-3">
-            <ThemeSwitcher />
-            <LanguageSwitcher />
-
-            <Button
-              variant="outline"
-              size="sm"
-              shape="rounded"
-              onClick={handleLogout}
-              disabled={isLoggingOut}
-              className="text-xs sm:text-sm font-medium border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--color-fertigating-bg-light)] dark:hover:bg-[var(--color-fertigating-bg-dark)]"
-            >
-              {isLoggingOut ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
-              ) : (
-                <LogOut className="w-4 h-4 mr-1.5" />
-              )}
-              {isLoggingOut ? t("loggingOut") : t("logout")}
-            </Button>
-          </div>
-        </div>
-      </header> */}
-
+    <div className="min-h-screen  text-[var(--foreground)]">
       {/* Main Dashboard Area */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Welcome Banner */}

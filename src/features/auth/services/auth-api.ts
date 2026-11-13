@@ -15,10 +15,6 @@ import type {
   ResetPasswordResponse,
 } from "../types/auth.types";
 import { BACKEND_URL } from "@/lib/api/api-config";
-// const BACKEND_URL =
-//   process.env.API_BASE_URL ||
-//   process.env.NEXT_PUBLIC_API_URL ||
-//   "http://172.16.20.58:81";
 
 const COUNTRY_BY_DIALING_CODE: Record<string, string> = {
   "+1": "US",
@@ -28,14 +24,6 @@ const COUNTRY_BY_DIALING_CODE: Record<string, string> = {
   "+94": "LK",
   "+971": "AE",
 };
-
-// function getCountryFromDialingCode(countryCode: string): string {
-//   const country = COUNTRY_BY_DIALING_CODE[countryCode];
-//   if (!country) {
-//     throw new ApiError("Unsupported country calling code.", 400, 400);
-//   }
-//   return country;
-// }
 
 export async function loginUser(
   credentials: LoginCredentials

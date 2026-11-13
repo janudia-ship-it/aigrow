@@ -25,6 +25,8 @@ export function useAuth() {
         return tAuth("errors.emailNotVerified");
       case AuthErrorCode.RATE_LIMIT_EXCEEDED:
         return tAuth("errors.rateLimit");
+      case AuthErrorCode.SESSION_EXPIRED_OTHER_DEVICE:
+        return tAuth("errors.sessionExpired");
       default:
         return defaultMsg || tAuth("errors.genericError");
     }

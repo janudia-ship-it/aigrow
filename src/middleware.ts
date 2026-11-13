@@ -1,18 +1,45 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { ACCESS_TOKEN_COOKIE } from "@/lib/auth/session";
+import {
+  ACCESS_TOKEN_COOKIE,
+  REFRESH_TOKEN_COOKIE,
+  USER_PROFILE_COOKIE,
+} from "@/lib/auth/session";
 
-const PROTECTED_ROUTES = ["/dashboard", "/profile", "/settings"];
-const AUTH_ROUTES = ["/login", "/signup", "/forgot-password"];
+const PROTECTED_ROUTES = [
+  "/dashboard",
+  "/profile",
+  "/settings",
+  "/farm",
+  "/devices",
+];
+const AUTH_ROUTES = [
+  "/login",
+  "/signup",
+  "/forgot-password",
+  "/reset-password",
+  "/verify-email",
+];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
+  const isSessionExpired =
+    request.nextUrl.searchParams.get("sessionExpired") === "true";
 
   const isProtectedRoute = PROTECTED_ROUTES.some((route) =>
     pathname.startsWith(route)
   );
   const isAuthRoute = AUTH_ROUTES.some((route) => pathname.startsWith(route));
+
+  // If landing on an auth page with sessionExpired flag, clear stale cookies so user stays on login
+  if (isAuthRoute && isSessionExpired) {
+    const response = NextResponse.next();
+    response.cookies.delete(ACCESS_TOKEN_COOKIE);
+    response.cookies.delete(REFRESH_TOKEN_COOKIE);
+    response.cookies.delete(USER_PROFILE_COOKIE);
+    return response;
+  }
 
   // If attempting to access a protected route without a valid token, redirect to login
   if (isProtectedRoute && !token) {

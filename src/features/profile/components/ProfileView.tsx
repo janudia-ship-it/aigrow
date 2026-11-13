@@ -35,6 +35,7 @@ import {
   type ChangePasswordFormData,
   type ProfileDetailsFormData,
 } from "../schemas/profile.schema";
+import { toast } from "sonner";
 
 const COUNTRY_CODES = getCountries()
   .map((country) => {
@@ -209,7 +210,8 @@ export function ProfileView({ user }: ProfileViewProps) {
       }
 
       // 3. Show success notification and sync server components
-      setProfileSuccess(result.message || "Profile updated successfully!");
+      // setProfileSuccess(result.message || "Profile updated successfully!");
+      toast.success(result.messages || "Profile updated successfully!");
       router.refresh();
       setTimeout(() => setProfileSuccess(""), 4000);
     } catch (err) {
@@ -247,12 +249,6 @@ export function ProfileView({ user }: ProfileViewProps) {
           "Unable to change password. Please verify current password."
         );
       }
-
-      // setPasswordSuccess(
-      //   result.message || "Password updated successfully! Redirecting to login..."
-      // );
-      // resetPasswordForm();
-
       // Logout and redirect to login page prompting the user to login again
       setTimeout(async () => {
         try {
@@ -262,7 +258,7 @@ export function ProfileView({ user }: ProfileViewProps) {
         }
         router.push("/login?reset=true");
         router.refresh();
-      }, 1500);
+      },);
     } catch (err) {
       setPasswordError(
         err instanceof Error ? err.message : "Something went wrong."

@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { ACCESS_TOKEN_COOKIE, USER_PROFILE_COOKIE } from "@/lib/auth/session";
+import {
+  getAuthSession,
+  clearAuthSession,
+  ACCESS_TOKEN_COOKIE,
+  REFRESH_TOKEN_COOKIE,
+  USER_PROFILE_COOKIE,
+} from "@/lib/auth/session";
 import { profileDetailsSchema } from "@/features/profile/schemas/profile.schema";
 import { updateProfileApi } from "@/features/profile/services/profile-api";
+import { ApiError } from "@/lib/api/api-error";
 
 export async function PUT(request: NextRequest) {
   try {
     const cookieStore = await cookies();
-    const accessToken = cookieStore.get(ACCESS_TOKEN_COOKIE)?.value || null;
+    const { accessToken } = await getAuthSession();
 
     const existingUserStr = cookieStore.get(USER_PROFILE_COOKIE)?.value;
     let existingUser: Record<string, any> | null = null;
@@ -74,6 +81,26 @@ export async function PUT(request: NextRequest) {
       updatedUser = result.user;
     } catch (backendError) {
       console.error("Backend updateProfileApi error:", backendError);
+      if (
+        backendError instanceof ApiError &&
+        (backendError.status === 401 || backendError.errorCode === 2008)
+      ) {
+        await clearAuthSession();
+        const res = NextResponse.json(
+          {
+            success: false,
+            sessionExpired: true,
+            errorCode: backendError.errorCode || 2008,
+            errorMessage: backendError.message,
+          },
+          { status: 401 }
+        );
+        res.cookies.delete(ACCESS_TOKEN_COOKIE);
+        res.cookies.delete(REFRESH_TOKEN_COOKIE);
+        res.cookies.delete(USER_PROFILE_COOKIE);
+        return res;
+      }
+
       return NextResponse.json(
         {
           success: false,
