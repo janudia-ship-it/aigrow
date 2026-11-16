@@ -47,7 +47,9 @@ export async function GET() {
                 success: false,
                 errorMessage:
                     error instanceof Error
-                        ? error.message
+                        ? error.message === "fetch failed"
+                            ? "Unable to connect to backend server (172.16.20.58:81). Please ensure you are connected to the network or VPN."
+                            : error.message
                         : "Unable to connect to farm service. Please check your network.",
             },
             { status: 500 }
