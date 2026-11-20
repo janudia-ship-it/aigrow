@@ -10,6 +10,8 @@
    --color-primary: #004c4b;
    --color-primary-dark: #000000;
    --color-primary-teal-medium: #007a78;
+   --color-primary-teal-deep: #00615c;
+   --color-accent-mint: #00e5a3;
 
    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      ── Scaffold backgrounds
@@ -21,7 +23,60 @@
      ── Surface / card
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
    --color-surface-light: #ffffff;
-   --color-surface-dark: #1a1a1a;
+   --color-surface-dark: #121212;
+
+   /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ── Farm Dashboard Theme Colors
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+   /* Card surfaces & borders */
+   --color-farm-card-bg-light: #ffffff;
+   --color-farm-card-bg-dark: #0d0d0d;
+   --color-farm-card-border-light: #e5e7eb;
+   --color-farm-card-border-dark: #1f2937;
+
+   /* Pill action button */
+   --color-btn-pill-border: #004c4b;
+   --color-btn-pill-border-dark: #00e5a3;
+   --color-btn-pill-text: #004c4b;
+   --color-btn-pill-text-dark: #00e5a3;
+   --color-btn-pill-hover: #e8f2ef;
+   --color-btn-pill-hover-dark: #102a27;
+
+   /* Section items row background (Members & Devices) */
+   --color-item-row-bg: #eef4f1;
+   --color-item-row-bg-dark: #142623;
+
+   /* Zones card background */
+   --color-zone-card-bg: #fafbf9;
+   --color-zone-card-bg-dark: #152320;
+
+   /* Blocks row background */
+   --color-block-row-bg: #edf4f1;
+   --color-block-row-bg-dark: #1c3630;
+
+   /* Active / Online status badge */
+   --color-badge-active-bg: #d7e8df;
+   --color-badge-active-text: #1e5440;
+   --color-badge-active-bg-dark: #1c3a32;
+   --color-badge-active-text-dark: #6ee7b7;
+
+   /* Role / Device Type badge */
+   --color-badge-role-bg: #dce7e1;
+   --color-badge-role-text: #2d5a46;
+   --color-badge-role-bg-dark: #203d36;
+   --color-badge-role-text-dark: #a7f3d0;
+
+   /* Offline status badge */
+   --color-badge-offline-bg: #fde2e2;
+   --color-badge-offline-text: #991b1b;
+   --color-badge-offline-bg-dark: #3d1414;
+   --color-badge-offline-text-dark: #fca5a5;
+
+   /* Never Connected badge */
+   --color-badge-never-bg: #e2e8f0;
+   --color-badge-never-text: #475569;
+   --color-badge-never-bg-dark: #2d3748;
+   --color-badge-never-text-dark: #cbd5e1;
 
    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      ── Text
@@ -167,6 +222,19 @@
    --google-btn-border: var(--color-google-border);
    --google-btn-text: var(--color-text-primary-light);
    --google-btn-hover: var(--color-google-hover);
+
+   /* Semantic Farm Tokens */
+   --farm-card-bg: var(--color-farm-card-bg-light);
+   --farm-card-border: var(--color-farm-card-border-light);
+   --farm-heading: var(--color-primary);
+   --farm-icon: var(--color-primary-teal-deep);
+   --farm-divider: #e5e7eb;
+   --farm-row-bg: var(--color-item-row-bg);
+   --farm-zone-bg: var(--color-zone-card-bg);
+   --farm-block-bg: var(--color-block-row-bg);
+   --farm-btn-border: var(--color-btn-pill-border);
+   --farm-btn-text: var(--color-btn-pill-text);
+   --farm-btn-hover: var(--color-btn-pill-hover);
 }
 
 .dark,
@@ -187,6 +255,19 @@
    --google-btn-border: var(--color-outline-dark);
    --google-btn-text: var(--color-text-primary-dark);
    --google-btn-hover: var(--color-input-fill-dark);
+
+   /* Semantic Farm Tokens (Dark) */
+   --farm-card-bg: var(--color-farm-card-bg-dark);
+   --farm-card-border: var(--color-farm-card-border-dark);
+   --farm-heading: var(--color-accent-mint);
+   --farm-icon: var(--color-accent-mint);
+   --farm-divider: #1f2937;
+   --farm-row-bg: var(--color-item-row-bg-dark);
+   --farm-zone-bg: var(--color-zone-card-bg-dark);
+   --farm-block-bg: var(--color-block-row-bg-dark);
+   --farm-btn-border: var(--color-btn-pill-border-dark);
+   --farm-btn-text: var(--color-btn-pill-text-dark);
+   --farm-btn-hover: var(--color-btn-pill-hover-dark);
 }
 
 body {

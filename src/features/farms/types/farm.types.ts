@@ -1,7 +1,8 @@
 export interface Farm {
     id: number;
     name: string;
-    timeZoneId: string;
+    utcOffset?: string;
+    timeZoneId?: string;
     address: string;
     sizeAcre: number;
     latitude: number | null;
@@ -48,4 +49,23 @@ export interface FarmDetailsApiResponse {
     success: boolean;
     message: string | null;
     data: FarmDetails;
+}
+
+export interface UpdateFarmPayload {
+    name: string;
+    timeZone?: string;
+    timeZoneId?: string;
+    utcOffset?: string;
+    address: string;
+    sizeAcre: number;
+    latitude: number;
+    longitude: number;
+}
+
+export interface UpdateFarmApiResponse {
+    errorCode: number;
+    errorMessage: string | null;
+    success: boolean;
+    message: string | null;
+    data: null;
 }

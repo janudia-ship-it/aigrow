@@ -1,17 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getFarmDevices } from "../services/device-service";
 import type { DeviceSummary } from "../types/device";
 
 export function useFarmDevices(farmId: number | null) {
-
     const [devices, setDevices] = useState<DeviceSummary[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-
+    const fetchDevices = useCallback(async () => {
         if (farmId === null) {
             setDevices([]);
             setError(null);
@@ -19,47 +17,29 @@ export function useFarmDevices(farmId: number | null) {
             return;
         }
 
-        let cancelled = false;
-
-        async function fetchDevices() {
-            try {
-                setLoading(true);
-                setError(null);
-
-                const data = await getFarmDevices(farmId!);
-
-                if (!cancelled) {
-                    setDevices(data);
-                }
-
-            } catch (err) {
-                if (!cancelled) {
-                    setError(
-                        err instanceof Error
-                            ? err.message
-                            : "Something went wrong"
-                    );
-                    setDevices([]);
-                }
-
-            } finally {
-                if (!cancelled) {
-                    setLoading(false);
-                }
-            }
+        try {
+            setLoading(true);
+            setError(null);
+            const data = await getFarmDevices(farmId);
+            setDevices(data);
+        } catch (err) {
+            setError(
+                err instanceof Error ? err.message : "Something went wrong"
+            );
+            setDevices([]);
+        } finally {
+            setLoading(false);
         }
-
-        fetchDevices();
-
-        return () => {
-            cancelled = true;
-        };
-
     }, [farmId]);
+
+    useEffect(() => {
+        fetchDevices();
+    }, [fetchDevices]);
 
     return {
         devices,
         loading,
         error,
+        refetch: fetchDevices,
     };
 }

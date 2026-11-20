@@ -43,7 +43,7 @@ export function DashboardView({ user }: { user: UserProfile }) {
   return (
     <div className="min-h-screen  text-[var(--foreground)]">
       {/* Main Dashboard Area */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-1 sm:px-4 lg:px-6 py-2 sm:py-6">
         {/* Welcome Banner */}
         <div className="rounded-2xl bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-teal-medium)] text-white p-6 sm:p-8 mb-8 shadow-sm relative overflow-hidden">
           <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">

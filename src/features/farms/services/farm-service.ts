@@ -1,8 +1,11 @@
-
 import { BACKEND_URL } from "@/lib/api/api-config";
 import { ApiError } from "@/lib/api/api-error";
-import type { FarmResponse, FarmDetailsApiResponse } from "../types/farm.types";
-
+import type {
+    FarmResponse,
+    FarmDetailsApiResponse,
+    UpdateFarmPayload,
+    UpdateFarmApiResponse,
+} from "../types/farm.types";
 
 export const farmService = {
     getMyFarms: async (accessToken: string): Promise<FarmResponse> => {
@@ -32,6 +35,7 @@ export const farmService = {
 
         return result;
     },
+
     getFarmById: async (
         farmId: number,
         accessToken: string
@@ -58,5 +62,63 @@ export const farmService = {
         return result;
     },
 
+    updateFarm: async (
+        farmId: number,
+        payload: UpdateFarmPayload,
+        accessToken: string
+    ): Promise<UpdateFarmApiResponse> => {
+        const response = await fetch(`${BACKEND_URL}/api/v1/farms/${farmId}`, {
+            method: "PUT",
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+        });
 
+        const result: UpdateFarmApiResponse = await response.json().catch(() => ({
+            errorCode: 500,
+            errorMessage: "Failed to update farm",
+            success: false,
+            message: null,
+            data: null,
+        }));
+
+        if (!response.ok || !result.success) {
+            throw new ApiError(
+                result.errorMessage || "Unable to update farm details",
+                result.errorCode || (response.status === 401 ? 2008 : 0),
+                response.status
+            );
+        }
+
+        return result;
+    },
 };
+
+export async function updateFarmClient(
+    farmId: number,
+    payload: UpdateFarmPayload
+): Promise<UpdateFarmApiResponse> {
+    const response = await fetch(`/api/farms/${farmId}`, {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+    });
+
+    const result: UpdateFarmApiResponse = await response.json().catch(() => ({
+        errorCode: 500,
+        errorMessage: "Failed to update farm",
+        success: false,
+        message: null,
+        data: null,
+    }));
+
+    if (!response.ok || !result.success) {
+        throw new Error(result.errorMessage || "Unable to update farm");
+    }
+
+    return result;
+}

@@ -1,12 +1,15 @@
-
 "use client";
 
 import { useState } from "react";
 import { useFarms } from "../hooks/use-farms";
 import FarmCard from "./farm-card";
-import DeviceList from "@/features/devices/components/device-list";
+import type { UserProfile } from "@/features/auth/types/auth.types";
 
-export default function FarmList() {
+interface FarmListProps {
+    currentUser?: UserProfile | null;
+}
+
+export default function FarmList({ currentUser }: FarmListProps) {
     const { farms, loading, error } = useFarms();
 
     const [selectedFarm, setSelectedFarm] =
@@ -34,10 +37,9 @@ export default function FarmList() {
     }
 
     return (
-        <div className="mt-4">
-
+        <div className="mt-1 sm:mt-3 p-1 sm:p-3 md:p-4">
             {/* Farm Dropdown */}
-            <div className="max-w-md mb-4">
+            <div className="mb-4 flex justify-start">
                 <select
                     value={selectedFarm}
                     onChange={(e) =>
@@ -47,9 +49,9 @@ export default function FarmList() {
                                 : Number(e.target.value)
                         )
                     }
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#004C4B]"
+                    className="w-full sm:w-auto min-w-[200px] rounded-3xl border border-gray-300 dark:border-gray-700 bg-primary dark:bg-[#007A78] px-4 py-2 text-sm sm:text-base text-white focus:outline-none focus:ring-2 focus:ring-[#004C4B] dark:focus:ring-[#00E5A3] transition-colors cursor-pointer"
                 >
-                    <option value="">
+                    <option value="" className="bg-white text-gray-900 dark:bg-[#1A1A1A] dark:text-gray-100">
                         Select a farm
                     </option>
 
@@ -57,6 +59,7 @@ export default function FarmList() {
                         <option
                             key={farm.id}
                             value={farm.id}
+                            className="bg-white text-gray-900 dark:bg-[#1A1A1A] dark:text-gray-100"
                         >
                             {farm.name}
                         </option>
@@ -66,10 +69,8 @@ export default function FarmList() {
 
             {/* Selected Farm Card */}
             {selectedFarmData && (
-                <FarmCard farm={selectedFarmData} />
+                <FarmCard farm={selectedFarmData} currentUser={currentUser} />
             )}
-
-
         </div>
     );
 }
