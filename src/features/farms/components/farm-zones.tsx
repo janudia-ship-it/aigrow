@@ -153,7 +153,7 @@ export default function FarmZones({ farmId, isManager }: FarmZonesProps) {
                                 {/* Blocks Subheader */}
                                 <div className="flex items-center justify-between mt-5 mb-3 flex-wrap gap-2">
                                     <div className="flex items-center gap-2 text-sm font-semibold text-gray-600 dark:text-gray-300">
-                                        <div className="p-2 rounded-lg  dark:bg-[#102A27] text-[#004C4B] dark:text-[#00E5A3]">
+                                        <div className="p-2 rounded-lg  dark:bg-[#102A27] text-primary dark:text-[#00E5A3]">
                                             <Map size={18} />
                                         </div>
                                         <span>Blocks</span>

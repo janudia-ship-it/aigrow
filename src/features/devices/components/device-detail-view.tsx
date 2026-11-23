@@ -123,7 +123,7 @@ export default function DeviceDetailView({
                                     onClick={() => setIsRenameModalOpen(true)}
                                     className="inline-flex items-center gap-1.5 rounded-full border border-[#004C4B] dark:border-[#00E5A3] bg-white dark:bg-[#142623] px-3.5 py-1.5 text-xs font-semibold text-[#004C4B] dark:text-[#00E5A3] hover:bg-[#E8F2EF] dark:hover:bg-[#102A27] transition cursor-pointer shadow-xs"
                                 >
-                                    <Tag size={13} />
+                                    {/* <Tag size={13} /> */}
                                     <span>Rename Device</span>
                                 </button>
                                 <button
@@ -131,7 +131,7 @@ export default function DeviceDetailView({
                                     onClick={() => setIsEditModalOpen(true)}
                                     className="inline-flex items-center gap-1.5 rounded-full bg-[#004C4B] dark:bg-[#00E5A3] px-3.5 py-1.5 text-xs font-semibold text-white dark:text-[#001A1A] hover:bg-[#003736] dark:hover:bg-[#00CFA3] transition cursor-pointer shadow-xs"
                                 >
-                                    <Pencil size={13} />
+                                    {/* <Pencil size={13} /> */}
                                     <span>Update Device</span>
                                 </button>
                                 <button
@@ -139,7 +139,7 @@ export default function DeviceDetailView({
                                     onClick={() => setIsMoveModalOpen(true)}
                                     className="inline-flex items-center gap-1.5 rounded-full border border-[#004C4B] dark:border-[#00E5A3] bg-white dark:bg-[#142623] px-3.5 py-1.5 text-xs font-semibold text-[#004C4B] dark:text-[#00E5A3] hover:bg-[#E8F2EF] dark:hover:bg-[#102A27] transition cursor-pointer shadow-xs"
                                 >
-                                    <ArrowRightLeft size={13} />
+                                    {/* <ArrowRightLeft size={13} /> */}
                                     <span>Move Device</span>
                                 </button>
                                 <button
@@ -147,7 +147,7 @@ export default function DeviceDetailView({
                                     onClick={() => setIsDeleteModalOpen(true)}
                                     className="inline-flex items-center gap-1.5 rounded-full border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-3.5 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition cursor-pointer shadow-xs"
                                 >
-                                    <Trash2 size={13} />
+                                    {/* <Trash2 size={13} /> */}
                                     <span>Delete Device</span>
                                 </button>
                             </>
@@ -195,7 +195,7 @@ export default function DeviceDetailView({
                     <div className="rounded-2xl border border-gray-200 dark:border-gray-800 p-4 sm:p-6 sm:p-7 bg-white dark:bg-[#0D0D0D] shadow-xs">
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                             <div className="flex items-center gap-3 min-w-0">
-                                <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-[#EEF4F1] dark:bg-[#142623] shrink-0">
+                                <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-2xl dark:bg-[#142623] shrink-0">
                                     <Cpu className="text-[#004C4B] dark:text-[#00E5A3]" size={22} />
                                 </div>
                                 <div className="min-w-0">
@@ -345,6 +345,7 @@ export default function DeviceDetailView({
                                 {device.actuators?.length ?? 0} {device.actuators?.length === 1 ? "actuator" : "actuators"}
                             </span>
                         </div>
+
 
                         {!device.actuators || device.actuators.length === 0 ? (
                             <p className="text-sm text-gray-400 py-4 text-center">
