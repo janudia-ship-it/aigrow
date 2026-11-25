@@ -2,6 +2,107 @@ import { NextRequest, NextResponse } from "next/server";
 import { BACKEND_URL } from "@/lib/api/api-config";
 import { getAuthSession } from "@/lib/auth/session";
 
+// GET /api/admin/devices → GET {backend}/api/v1/admin/devices
+export async function GET(request: NextRequest) {
+    try {
+        const session = await getAuthSession();
+        if (!session.accessToken) {
+            return NextResponse.json(
+                {
+                    errorCode: 401,
+                    errorMessage: "Unauthorized. Please log in.",
+                    success: false,
+                    message: null,
+                    data: null,
+                },
+                { status: 401 }
+            );
+        }
+
+        const role = session.user?.role?.toLowerCase()?.trim();
+        if (role !== "admin" && role !== "superadmin" && role !== "super admin") {
+            return NextResponse.json(
+                {
+                    errorCode: 2002,
+                    errorMessage: "Forbidden. Only Admin or SuperAdmin can view all devices.",
+                    success: false,
+                    message: null,
+                    data: null,
+                },
+                { status: 403 }
+            );
+        }
+
+        const { searchParams } = new URL(request.url);
+        const pageParam = searchParams.get("page");
+        const pageSizeParam = searchParams.get("pageSize");
+        const searchParam = searchParams.get("search");
+        const farmIdParam = searchParams.get("farmId");
+        const deviceTypeParam = searchParams.get("deviceType");
+
+        const query = new URLSearchParams();
+        if (pageParam) {
+            const page = Math.min(10000, Math.max(1, Number(pageParam) || 1));
+            query.set("page", String(page));
+        }
+        if (pageSizeParam) {
+            const pageSize = Math.min(100, Math.max(1, Number(pageSizeParam) || 20));
+            query.set("pageSize", String(pageSize));
+        }
+        if (searchParam && searchParam.trim()) {
+            query.set("search", searchParam.trim().slice(0, 100));
+        }
+        if (farmIdParam) {
+            const farmId = Number(farmIdParam);
+            if (Number.isInteger(farmId) && farmId > 0) {
+                query.set("farmId", String(farmId));
+            }
+        }
+        if (deviceTypeParam && deviceTypeParam.trim()) {
+            query.set("deviceType", deviceTypeParam.trim());
+        }
+
+        const qs = query.toString();
+        const url = qs
+            ? `${BACKEND_URL}/api/v1/admin/devices?${qs}`
+            : `${BACKEND_URL}/api/v1/admin/devices`;
+
+        const response = await fetch(url, {
+            method: "GET",
+            headers: {
+                Authorization: `Bearer ${session.accessToken}`,
+                "Content-Type": "application/json",
+            },
+            cache: "no-store",
+        });
+
+        const result = await response.json().catch(() => ({
+            errorCode: 500,
+            errorMessage: "Invalid response from devices service",
+            success: false,
+            message: null,
+            data: null,
+        }));
+
+        return NextResponse.json(result, { status: response.status });
+    } catch (error) {
+        console.error("Get All Devices API Error:", error);
+        return NextResponse.json(
+            {
+                errorCode: 500,
+                errorMessage:
+                    error instanceof Error && error.message === "fetch failed"
+                        ? "Unable to connect to backend server."
+                        : "Failed to retrieve devices",
+                success: false,
+                message: null,
+                data: null,
+            },
+            { status: 500 }
+        );
+    }
+}
+
 // POST /api/admin/devices → POST {backend}/api/v1/admin/devices
 export async function POST(request: NextRequest) {
     try {

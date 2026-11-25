@@ -69,3 +69,36 @@ export interface UpdateFarmApiResponse {
     message: string | null;
     data: null;
 }
+
+export interface PagedFarms {
+    items: Farm[];
+    page: number;
+    pageSize: number;
+    totalCount: number;
+    totalPages: number;
+}
+
+export interface PagedFarmsApiResponse {
+    errorCode: number;
+    errorMessage: string | null;
+    success: boolean;
+    message: string | null;
+    data: PagedFarms | null;
+}
+
+export interface CreateFarmPayload {
+    name: string;
+    utcOffset: string;
+    address: string;
+    sizeAcre: number;
+    latitude: number | null;
+    longitude: number | null;
+}
+
+export interface CreateFarmApiResponse {
+    errorCode: number;
+    errorMessage: string | null;
+    success: boolean;
+    message: string | null;
+    data: { id: number } | Farm | null;
+}

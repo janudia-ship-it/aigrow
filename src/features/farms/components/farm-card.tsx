@@ -88,8 +88,7 @@ export default function FarmCard({ farm, currentUser }: FarmCardProps) {
                         {hasEditPermission && (
                             <Link
                                 href={`/farm/${farm.id}/edit`}
-                                className="rounded-full border border-[#004C4B] dark:border-[#00E5A3] px-3.5 sm:px-4 py-1 text-xs sm:text-sm font-medium text-[#004C4B] dark:text-[#00E5A3] hover:bg-[#E8F2EF] dark:hover:bg-[#102A27] transition cursor-pointer"
-                            >
+                                className="inline-flex items-center gap-1.5 rounded-full bg-[#004C4B] dark:bg-[#00E5A3] px-3.5 py-1.5 text-xs font-semibold text-white dark:text-[#001A1A] hover:bg-[#003736] dark:hover:bg-[#00CFA3] transition cursor-pointer shadow-xs"                            >
                                 Edit
                             </Link>
                         )}
@@ -183,9 +182,9 @@ export default function FarmCard({ farm, currentUser }: FarmCardProps) {
                 </div>
 
                 {/* Weather Details Card */}
-                <div className="min-w-0 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 sm:p-5 shadow-xs bg-white dark:bg-[#0D0D0D]">
+                <div className="min-w-0 rounded-2xl border border-gray-200 dark:border-gray-800 p-2 sm:p-5 shadow-xs bg-white dark:bg-[#0D0D0D]">
 
-                    <h2 className="text-lg sm:text-xl font-semibold text-[#004C4B] dark:text-[#00E5A3] mb-4">
+                    <h2 className="text-lg sm:text-xl font-semibold text-[#004C4B] dark:text-[#00E5A3] mb-1">
                         Current Weather
                     </h2>
 
@@ -211,13 +210,13 @@ export default function FarmCard({ farm, currentUser }: FarmCardProps) {
 
                         ) : (
 
-                            <div className="space-y-4">
+                            <div className="space-y-2">
 
                                 {farmDetails.weather.map((weather, index) => (
 
                                     <div
                                         key={`${weather.deviceId ?? weather.source}-${index}`}
-                                        className="rounded-lg p-2 sm:p-4"
+                                        className="rounded-lg p-1 sm:p-4"
                                     >
                                         {/* Weather station header — links to device detail if it's a device source */}
                                         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
@@ -225,12 +224,13 @@ export default function FarmCard({ farm, currentUser }: FarmCardProps) {
                                                 {weather.deviceId ? (
                                                     // Device weather station — show icon + source name as link
                                                     <>
-                                                        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full dark:bg-[#142623] shrink-0">
-                                                            <Cpu size={18} className="text-[#004C4B] dark:text-[#00E5A3]" />
-                                                        </span>
-                                                        <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">
-                                                            {weather.source}
-                                                        </span>
+                                                        <Link
+                                                            href={`/devices/${weather.deviceId}`}
+                                                            className="inline-flex items-center gap-1 rounded-full  dark:border-[#00E5A3] px-3 py-1 text-xs font-medium text-[#004C4B] dark:text-[#00E5A3] bg-[#E8F2EF] dark:hover:bg-[#102A27] transition shrink-0"
+                                                        >
+                                                            <span>{weather.source}</span>
+                                                            <ArrowRight size={11} />
+                                                        </Link>
                                                     </>
                                                 ) : (
                                                     // OpenWeather source — just an icon + label
@@ -244,17 +244,6 @@ export default function FarmCard({ farm, currentUser }: FarmCardProps) {
                                                     </>
                                                 )}
                                             </div>
-
-                                            {/* "View Device" link — only shown for station devices */}
-                                            {weather.deviceId && (
-                                                <Link
-                                                    href={`/devices/${weather.deviceId}`}
-                                                    className="inline-flex items-center gap-1 rounded-full border border-[#004C4B] dark:border-[#00E5A3] px-3 py-1 text-xs font-medium text-[#004C4B] dark:text-[#00E5A3] hover:bg-[#E8F2EF] dark:hover:bg-[#102A27] transition shrink-0"
-                                                >
-                                                    <span>View Device</span>
-                                                    <ArrowRight size={11} />
-                                                </Link>
-                                            )}
                                         </div>
                                         {/* Temperature */}
                                         <div className="flex items-center gap-3">

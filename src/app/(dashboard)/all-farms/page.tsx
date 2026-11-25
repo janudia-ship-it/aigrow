@@ -1,8 +1,18 @@
-export default function AllFarmsPage() {
+import { redirect } from "next/navigation";
+import { getAuthSession } from "@/lib/auth/session";
+import AllFarmsView from "@/features/farms/components/all-farms-view";
+
+export default async function AllFarmsPage() {
+    const { user } = await getAuthSession();
+    const role = user?.role?.toLowerCase()?.trim();
+
+    if (role !== "admin" && role !== "superadmin" && role !== "super admin") {
+        redirect("/dashboard");
+    }
+
     return (
-        <div className="rounded-2xl border border-gray-200 dark:border-gray-800 p-4 sm:p-8 bg-white dark:bg-[#0D0D0D] shadow-xs">
-            <h1 className="text-lg sm:text-xl font-semibold text-[#004C4B] dark:text-[#00E5A3] mb-2">All Farms</h1>
-            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Admin view of all farms will appear here.</p>
+        <div className="space-y-4">
+            <AllFarmsView currentUser={user} />
         </div>
     );
 }

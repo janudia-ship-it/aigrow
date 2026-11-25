@@ -79,8 +79,7 @@ export default function FarmMembers({ farmId, currentUser, isManager }: FarmMemb
                     <button
                         type="button"
                         onClick={() => setIsAddOpen(true)}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-[#004C4B] dark:border-[#00E5A3] px-3.5 sm:px-4 py-1 text-xs sm:text-sm font-medium text-[#004C4B] dark:text-[#00E5A3] hover:bg-[#E8F2EF] dark:hover:bg-[#102A27] transition cursor-pointer"
-                    >
+                        className="inline-flex items-center gap-1.5 rounded-full bg-[#004C4B] dark:bg-[#00E5A3] px-3.5 py-1.5 text-xs font-semibold text-white dark:text-[#001A1A] hover:bg-[#003736] dark:hover:bg-[#00CFA3] transition cursor-pointer shadow-xs"                    >
                         <span>Add Members</span>
                     </button>
                 )}

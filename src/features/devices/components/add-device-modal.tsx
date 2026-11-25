@@ -248,9 +248,8 @@ export default function AddDeviceModal({
                             <span>Advanced Settings</span>
                             <ChevronDown
                                 size={14}
-                                className={`transition-transform duration-200 ${
-                                    showAdvanced ? "rotate-180" : ""
-                                }`}
+                                className={`transition-transform duration-200 ${showAdvanced ? "rotate-180" : ""
+                                    }`}
                             />
                         </button>
 
@@ -319,7 +318,7 @@ export default function AddDeviceModal({
                                 </>
                             ) : (
                                 <>
-                                    <Plus size={14} />
+
                                     <span>Add Device</span>
                                 </>
                             )}

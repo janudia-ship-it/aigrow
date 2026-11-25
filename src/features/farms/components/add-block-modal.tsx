@@ -144,7 +144,7 @@ export default function AddBlockModal({
                                 </>
                             ) : (
                                 <>
-                                    <Plus size={14} />
+
                                     <span>Create Block</span>
                                 </>
                             )}

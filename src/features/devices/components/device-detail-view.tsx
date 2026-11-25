@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -21,14 +21,37 @@ import {
     ArrowRightLeft,
     Trash2,
     Tag,
+    ChevronDown,
+    ChevronUp,
+    Info,
+    MoreVertical,
+    Plus,
 } from "lucide-react";
 import { useDeviceById } from "@/features/devices/hooks/use-device-by-id";
+import { useSensorTypes } from "@/features/devices/hooks/use-sensor-types";
+import { useActuatorTypes } from "@/features/devices/hooks/use-actuator-types";
 import EditDeviceModal from "./edit-device-modal";
 import MoveDeviceModal from "./move-device-modal";
 import DeleteDeviceModal from "./delete-device-modal";
 import RenameDeviceModal from "./rename-device-modal";
-import { canUpdateDevice } from "@/features/farms/utils/permissions";
+import RenameSensorModal from "./rename-sensor-modal";
+import AddSensorModal from "./add-sensor-modal";
+import AddActuatorModal from "./add-actuator-modal";
+import DeleteSensorModal from "./delete-sensor-modal";
+import UpdateSensorAreaModal from "./update-sensor-area-modal";
+import UpdateSensorCalibrationModal from "./update-sensor-calibration-modal";
+import SensorCard from "./sensor-card";
+import ActuatorCard from "./actuator-card";
+import RenameActuatorModal from "./rename-actuator-modal";
+import UpdateActuatorModal from "./update-actuator-modal";
+import UpdateActuatorAreaModal from "./update-actuator-area-modal";
+import DeleteActuatorModal from "./delete-actuator-modal";
+import SetActuatorModeModal from "./set-actuator-mode-modal";
+import SetActuatorOverrideModal from "./set-actuator-override-modal";
+import { canUpdateDevice, canRenameSensor, canRenameActuator } from "@/features/farms/utils/permissions";
+import { useFarmMembers } from "@/features/farms/hooks/use-farm-members";
 import type { UserProfile } from "@/features/auth/types/auth.types";
+import type { Sensor, Actuator } from "../types/device";
 
 const statusConfig: Record<
     string,
@@ -66,6 +89,37 @@ export default function DeviceDetailView({
     const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
+    const [isAddSensorOpen, setIsAddSensorOpen] = useState(false);
+    const [isAddActuatorOpen, setIsAddActuatorOpen] = useState(false);
+    const [renamingSensor, setRenamingSensor] = useState<Sensor | null>(null);
+    const [deletingSensor, setDeletingSensor] = useState<Sensor | null>(null);
+    const [areaSensor, setAreaSensor] = useState<Sensor | null>(null);
+    const [calibrationSensor, setCalibrationSensor] = useState<Sensor | null>(null);
+    const [renamingActuator, setRenamingActuator] = useState<Actuator | null>(null);
+    const [updatingActuator, setUpdatingActuator] = useState<Actuator | null>(null);
+    const [areaActuator, setAreaActuator] = useState<Actuator | null>(null);
+    const [deletingActuator, setDeletingActuator] = useState<Actuator | null>(null);
+    const [modeActuator, setModeActuator] = useState<Actuator | null>(null);
+    const [overrideActuator, setOverrideActuator] = useState<Actuator | null>(null);
+    const [showAllSensorTypes, setShowAllSensorTypes] = useState(false);
+    const [showAllActuatorTypes, setShowAllActuatorTypes] = useState(false);
+    const [cardMenuOpen, setCardMenuOpen] = useState(false);
+    const cardMenuRef = useRef<HTMLDivElement>(null);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        if (!cardMenuOpen) return;
+        function handleClick(e: MouseEvent) {
+            if (cardMenuRef.current && !cardMenuRef.current.contains(e.target as Node)) {
+                setCardMenuOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClick);
+        return () => document.removeEventListener("mousedown", handleClick);
+    }, [cardMenuOpen]);
+
+    const { sensorTypes, getSensorType } = useSensorTypes();
+    const { actuatorTypes, getActuatorType } = useActuatorTypes();
 
     // Fetch user from session if not provided by server component
     useEffect(() => {
@@ -81,7 +135,12 @@ export default function DeviceDetailView({
 
     const { device, loading, error, refetch } = useDeviceById(deviceId);
 
+    // Permission checks: Admin/SuperAdmin or Device Manage permission
+    const { members: farmMembers } = useFarmMembers(device?.assignment?.farmId ?? null);
+    const currentMember = farmMembers.find((m) => m.userId === user?.id);
     const isAuthorizedAdmin = canUpdateDevice(user);
+    const canManageSensors = canRenameSensor(user, currentMember?.permissions);
+    const canManageActuators = canRenameActuator(user, currentMember?.permissions);
 
     const statusInfo = device
         ? statusConfig[device.status] ?? statusConfig.NeverConnected
@@ -116,42 +175,6 @@ export default function DeviceDetailView({
 
                 {device && (
                     <div className="flex items-center gap-2 flex-wrap shrink-0">
-                        {isAuthorizedAdmin && (
-                            <>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsRenameModalOpen(true)}
-                                    className="inline-flex items-center gap-1.5 rounded-full border border-[#004C4B] dark:border-[#00E5A3] bg-white dark:bg-[#142623] px-3.5 py-1.5 text-xs font-semibold text-[#004C4B] dark:text-[#00E5A3] hover:bg-[#E8F2EF] dark:hover:bg-[#102A27] transition cursor-pointer shadow-xs"
-                                >
-                                    {/* <Tag size={13} /> */}
-                                    <span>Rename Device</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsEditModalOpen(true)}
-                                    className="inline-flex items-center gap-1.5 rounded-full bg-[#004C4B] dark:bg-[#00E5A3] px-3.5 py-1.5 text-xs font-semibold text-white dark:text-[#001A1A] hover:bg-[#003736] dark:hover:bg-[#00CFA3] transition cursor-pointer shadow-xs"
-                                >
-                                    {/* <Pencil size={13} /> */}
-                                    <span>Update Device</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsMoveModalOpen(true)}
-                                    className="inline-flex items-center gap-1.5 rounded-full border border-[#004C4B] dark:border-[#00E5A3] bg-white dark:bg-[#142623] px-3.5 py-1.5 text-xs font-semibold text-[#004C4B] dark:text-[#00E5A3] hover:bg-[#E8F2EF] dark:hover:bg-[#102A27] transition cursor-pointer shadow-xs"
-                                >
-                                    {/* <ArrowRightLeft size={13} /> */}
-                                    <span>Move Device</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsDeleteModalOpen(true)}
-                                    className="inline-flex items-center gap-1.5 rounded-full border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-3.5 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition cursor-pointer shadow-xs"
-                                >
-                                    {/* <Trash2 size={13} /> */}
-                                    <span>Delete Device</span>
-                                </button>
-                            </>
-                        )}
                         <button
                             type="button"
                             onClick={() => refetch()}
@@ -224,6 +247,69 @@ export default function DeviceDetailView({
                                     {device.deviceType}
                                 </span>
 
+                                {/* More Options (Authorized Admin) */}
+                                {isAuthorizedAdmin && (
+                                    <div className="relative" ref={cardMenuRef}>
+                                        <button
+                                            type="button"
+                                            aria-label="Device options"
+                                            onClick={() => setCardMenuOpen((v) => !v)}
+                                            className="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 transition p-1.5 rounded-full hover:bg-gray-200/50 dark:hover:bg-gray-800 cursor-pointer"
+                                        >
+                                            <MoreVertical size={18} />
+                                        </button>
+
+                                        {cardMenuOpen && (
+                                            <div className="absolute right-0 top-full mt-1.5 w-44 rounded-xl bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-gray-800 shadow-lg py-1.5 z-20">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setCardMenuOpen(false);
+                                                        setIsRenameModalOpen(true);
+                                                    }}
+                                                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-[#E8F2EF] dark:hover:bg-[#102A27] hover:text-[#004C4B] dark:hover:text-[#00E5A3] transition text-left cursor-pointer"
+                                                >
+                                                    <Tag size={13} />
+                                                    <span>Rename Device</span>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setCardMenuOpen(false);
+                                                        setIsEditModalOpen(true);
+                                                    }}
+                                                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-[#E8F2EF] dark:hover:bg-[#102A27] hover:text-[#004C4B] dark:hover:text-[#00E5A3] transition text-left cursor-pointer"
+                                                >
+                                                    <Pencil size={13} />
+                                                    <span>Update Device</span>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setCardMenuOpen(false);
+                                                        setIsMoveModalOpen(true);
+                                                    }}
+                                                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-[#E8F2EF] dark:hover:bg-[#102A27] hover:text-[#004C4B] dark:hover:text-[#00E5A3] transition text-left cursor-pointer"
+                                                >
+                                                    <ArrowRightLeft size={13} />
+                                                    <span>Move Device</span>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setCardMenuOpen(false);
+                                                        setIsDeleteModalOpen(true);
+                                                    }}
+                                                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition text-left cursor-pointer"
+                                                >
+                                                    <Trash2 size={13} />
+                                                    <span>Delete Device</span>
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
 
                             </div>
                         </div>
@@ -284,47 +370,93 @@ export default function DeviceDetailView({
                                     Sensors
                                 </h2>
                             </div>
-                            <span className="rounded-full bg-[#EEF4F1] dark:bg-[#142623] px-3 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-300">
-                                {device.sensors?.length ?? 0} {device.sensors?.length === 1 ? "sensor" : "sensors"}
-                            </span>
+                            <div className="flex items-center gap-2">
+                                <span className="rounded-full bg-[#EEF4F1] dark:bg-[#142623] px-3 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-300">
+                                    {device.sensors?.length ?? 0} {device.sensors?.length === 1 ? "sensor" : "sensors"}
+                                </span>
+                                {isAuthorizedAdmin && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsAddSensorOpen(true)}
+                                        className="inline-flex items-center gap-1.5 rounded-full bg-[#004C4B] dark:bg-[#00E5A3] px-3.5 py-1.5 text-xs font-semibold text-white dark:text-[#001A1A] hover:bg-[#003736] dark:hover:bg-[#00CFA3] transition cursor-pointer shadow-xs"
+                                    >
+
+                                        <span>Add Sensor</span>
+                                    </button>
+                                )}
+                            </div>
                         </div>
 
                         {!device.sensors || device.sensors.length === 0 ? (
-                            <p className="text-sm text-gray-400 py-4 text-center">
-                                No sensors configured for this device.
-                            </p>
+                            <div className="py-8 text-center">
+                                <p className="text-sm text-gray-400">
+                                    No sensors configured for this device.
+                                </p>
+                                {isAuthorizedAdmin && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsAddSensorOpen(true)}
+                                        className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-dashed border-[#004C4B] dark:border-[#00E5A3] px-4 py-2 text-xs font-semibold text-[#004C4B] dark:text-[#00E5A3] hover:bg-[#E8F2EF] dark:hover:bg-[#102A27] transition cursor-pointer"
+                                    >
+                                        <Plus size={13} />
+                                        <span>Add First Sensor</span>
+                                    </button>
+                                )}
+                            </div>
                         ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {device.sensors.map((sensor) => (
-                                    <div
+                                    <SensorCard
                                         key={sensor.id}
-                                        className="rounded-xl border border-gray-200 dark:border-gray-800 bg-[#EEF4F1]/60 dark:bg-[#142623]/60 p-4 transition hover:border-[#004C4B]/40 dark:hover:border-[#00E5A3]/40"
-                                    >
-                                        <div className="flex items-center justify-between mb-2">
-                                            <span className="text-xs font-semibold rounded-full px-2.5 py-0.5 bg-[#DCE7E1] text-[#2D5A46] dark:bg-[#203D36] dark:text-[#A7F3D0]">
-                                                {sensor.sensorType}
-                                            </span>
-                                            <span className="text-[11px] text-gray-400">
-                                                ID: #{sensor.id}
-                                            </span>
-                                        </div>
-
-                                        <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">
-                                            {sensor.name}
-                                        </p>
-
-                                        <div className="mt-3 pt-3 border-t border-gray-200/80 dark:border-gray-800/80 flex items-baseline justify-between">
-                                            <span className="text-xs text-gray-500 dark:text-gray-400">Current Reading</span>
-                                            <span className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                                                {sensor.value !== null && sensor.value !== undefined
-                                                    ? `${sensor.value} ${sensor.unit ?? ""}`
-                                                    : "—"}
-                                            </span>
-                                        </div>
-                                    </div>
+                                        sensor={sensor}
+                                        sensorTypeInfo={getSensorType(sensor.sensorType)}
+                                        canManage={canManageSensors}
+                                        isAdmin={isAuthorizedAdmin}
+                                        onRename={(s) => setRenamingSensor(s)}
+                                        onUpdateSensor={(s) => setRenamingSensor(s)}
+                                        onUpdateArea={(s) => setAreaSensor(s)}
+                                        onUpdateCalibration={(s) => setCalibrationSensor(s)}
+                                        onDelete={(s) => setDeletingSensor(s)}
+                                    />
                                 ))}
                             </div>
                         )}
+
+                        {/* Supported Sensor Types Reference (Any logged-in user can view) */}
+                        <div className="mt-5 pt-4 border-t border-gray-200/80 dark:border-gray-800/80">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                                    <Info size={13} className="text-[#004C4B] dark:text-[#00E5A3]" />
+                                    <span>Supported Sensor Types ({sensorTypes.length})</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAllSensorTypes((prev) => !prev)}
+                                    className="inline-flex items-center gap-1 text-xs font-medium text-[#004C4B] dark:text-[#00E5A3] hover:underline cursor-pointer"
+                                >
+                                    <span>{showAllSensorTypes ? "Hide Types" : "View Supported Sensor Types"}</span>
+                                    {showAllSensorTypes ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                                </button>
+                            </div>
+
+                            {showAllSensorTypes && (
+                                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 p-3 rounded-xl bg-[#EEF4F1]/60 dark:bg-[#142623]/60 border border-gray-200/80 dark:border-gray-800/80">
+                                    {sensorTypes.map((st) => (
+                                        <div
+                                            key={st.sensorType}
+                                            className="flex items-center justify-between p-2 rounded-lg bg-white/70 dark:bg-[#0D0D0D]/60 text-xs"
+                                        >
+                                            <span className="font-medium text-gray-800 dark:text-gray-200">
+                                                {st.displayName}
+                                            </span>
+                                            <span className="text-gray-400 font-mono text-[11px]">
+                                                {st.unit ? st.unit : "no unit"}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                         {device.status !== "Online" && (
                             <p className="text-xs text-gray-400 mt-4 italic">
                                 * Sensor readings are reported only while the device is Online.
@@ -341,82 +473,95 @@ export default function DeviceDetailView({
                                     Actuators
                                 </h2>
                             </div>
-                            <span className="rounded-full bg-[#EEF4F1] dark:bg-[#142623] px-3 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-300">
-                                {device.actuators?.length ?? 0} {device.actuators?.length === 1 ? "actuator" : "actuators"}
-                            </span>
+                            <div className="flex items-center gap-2">
+                                <span className="rounded-full bg-[#EEF4F1] dark:bg-[#142623] px-3 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-300">
+                                    {device.actuators?.length ?? 0} {device.actuators?.length === 1 ? "actuator" : "actuators"}
+                                </span>
+                                {isAuthorizedAdmin && device.deviceType !== "WeatherStation" && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsAddActuatorOpen(true)}
+                                        className="inline-flex items-center gap-1.5 rounded-full bg-[#004C4B] dark:bg-[#00E5A3] px-3.5 py-1.5 text-xs font-semibold text-white dark:text-[#001A1A] hover:bg-[#003736] dark:hover:bg-[#00CFA3] transition cursor-pointer shadow-xs"
+                                    >
+                                        <span>Add Actuator</span>
+                                    </button>
+                                )}
+                            </div>
                         </div>
 
-
                         {!device.actuators || device.actuators.length === 0 ? (
-                            <p className="text-sm text-gray-400 py-4 text-center">
-                                No actuators configured for this device.
-                            </p>
+                            <div className="py-8 text-center">
+                                <p className="text-sm text-gray-400">
+                                    No actuators configured for this device.
+                                </p>
+                                {isAuthorizedAdmin && device.deviceType !== "WeatherStation" && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsAddActuatorOpen(true)}
+                                        className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-dashed border-[#004C4B] dark:border-[#00E5A3] px-4 py-2 text-xs font-semibold text-[#004C4B] dark:text-[#00E5A3] hover:bg-[#E8F2EF] dark:hover:bg-[#102A27] transition cursor-pointer"
+                                    >
+                                        <Plus size={13} />
+                                        <span>Add First Actuator</span>
+                                    </button>
+                                )}
+                            </div>
                         ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {device.actuators.map((actuator) => {
-                                    const isOn = actuator.value === 1;
-
-                                    return (
-                                        <div
-                                            key={actuator.id}
-                                            className="rounded-xl border border-gray-200 dark:border-gray-800 bg-[#EEF4F1]/60 dark:bg-[#142623]/60 p-4 transition hover:border-[#004C4B]/40 dark:hover:border-[#00E5A3]/40 space-y-3"
-                                        >
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-xs font-semibold rounded-full px-2.5 py-0.5 bg-[#DCE7E1] text-[#2D5A46] dark:bg-[#203D36] dark:text-[#A7F3D0]">
-                                                    {actuator.actuatorType}
-                                                </span>
-                                                <span className="text-[11px] text-gray-400">
-                                                    ID: #{actuator.id}
-                                                </span>
-                                            </div>
-
-                                            <div>
-                                                <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">
-                                                    {actuator.name}
-                                                </p>
-                                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                                    Control Mode: <span className="font-medium text-gray-700 dark:text-gray-300">{actuator.controlMode}</span>
-                                                </p>
-                                            </div>
-
-                                            <div className="pt-2 border-t border-gray-200/80 dark:border-gray-800/80 flex items-center justify-between">
-                                                <span className="text-xs text-gray-500 dark:text-gray-400">Current State</span>
-                                                {actuator.value !== null ? (
-                                                    <span
-                                                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${isOn
-                                                            ? "bg-[#D7E8DF] text-[#1E5440] dark:bg-[#1C3A32] dark:text-[#6EE7B7]"
-                                                            : "bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                                                            }`}
-                                                    >
-                                                        {isOn ? (
-                                                            <>
-                                                                <ToggleRight size={14} /> ON
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <ToggleLeft size={14} /> OFF
-                                                            </>
-                                                        )}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-xs text-gray-400">—</span>
-                                                )}
-                                            </div>
-
-                                            {/* Remote Enabled + Override Details */}
-                                            <div className="flex items-center justify-between text-xs text-gray-400 pt-1">
-                                                <span>Remote: {actuator.isRemoteEnabled ? "Enabled" : "Disabled"}</span>
-                                                {actuator.override && (
-                                                    <span className="text-amber-600 dark:text-amber-400 font-medium">
-                                                        Override Active ({actuator.override.state ? "ON" : "OFF"})
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
+                                {device.actuators.map((actuator) => (
+                                    <ActuatorCard
+                                        key={actuator.id}
+                                        actuator={actuator}
+                                        actuatorTypeInfo={getActuatorType(actuator.actuatorType)}
+                                        canManage={canManageActuators}
+                                        isAdmin={isAuthorizedAdmin}
+                                        onRename={(a) => setRenamingActuator(a)}
+                                        onUpdateActuator={(a) => setUpdatingActuator(a)}
+                                        onUpdateArea={(a) => setAreaActuator(a)}
+                                        onDelete={(a) => setDeletingActuator(a)}
+                                        onChangeMode={(a) => setModeActuator(a)}
+                                        onSetOverride={(a) => setOverrideActuator(a)}
+                                        onModeChanged={() => refetch()}
+                                    />
+                                ))}
                             </div>
                         )}
+
+                        {/* Supported Actuator Types Reference (Any logged-in user can view) */}
+                        <div className="mt-5 pt-4 border-t border-gray-200/80 dark:border-gray-800/80">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                                    <Info size={13} className="text-[#004C4B] dark:text-[#00E5A3]" />
+                                    <span>Supported Actuator Types ({actuatorTypes.length})</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAllActuatorTypes((prev) => !prev)}
+                                    className="inline-flex items-center gap-1 text-xs font-medium text-[#004C4B] dark:text-[#00E5A3] hover:underline cursor-pointer"
+                                >
+                                    <span>{showAllActuatorTypes ? "Hide Types" : "View Supported Actuator Types"}</span>
+                                    {showAllActuatorTypes ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                                </button>
+                            </div>
+
+                            {showAllActuatorTypes && (
+                                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 p-3 rounded-xl bg-[#EEF4F1]/60 dark:bg-[#142623]/60 border border-gray-200/80 dark:border-gray-800/80">
+                                    {actuatorTypes.map((at) => (
+                                        <div
+                                            key={at.actuatorType}
+                                            className="flex items-center justify-between p-2 rounded-lg bg-white/70 dark:bg-[#0D0D0D]/60 text-xs"
+                                        >
+                                            <span className="font-medium text-gray-800 dark:text-gray-200">
+                                                {at.displayName}
+                                            </span>
+                                            <span className="text-gray-400 font-mono text-[11px]">
+                                                {at.actuatorType}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
                         {device.status !== "Online" && (
                             <p className="text-xs text-gray-400 mt-4 italic">
                                 * Actuator states (1 = ON, 0 = OFF) are reported only while the device is Online.
@@ -434,6 +579,152 @@ export default function DeviceDetailView({
                     onClose={() => setIsRenameModalOpen(false)}
                     onDeviceRenamed={() => {
                         refetch();
+                    }}
+                />
+            )}
+
+            {/* Rename Sensor Modal */}
+            {renamingSensor && (
+                <RenameSensorModal
+                    sensor={renamingSensor}
+                    isOpen={true}
+                    onClose={() => setRenamingSensor(null)}
+                    onSensorRenamed={() => {
+                        refetch();
+                        setRenamingSensor(null);
+                    }}
+                />
+            )}
+
+            {/* Add Sensor Modal */}
+            {device && (
+                <AddSensorModal
+                    deviceId={deviceId}
+                    isOpen={isAddSensorOpen}
+                    onClose={() => setIsAddSensorOpen(false)}
+                    onSensorAdded={() => {
+                        refetch();
+                    }}
+                />
+            )}
+
+            {/* Add Actuator Modal */}
+            {device && (
+                <AddActuatorModal
+                    deviceId={deviceId}
+                    deviceType={device.deviceType}
+                    isOpen={isAddActuatorOpen}
+                    onClose={() => setIsAddActuatorOpen(false)}
+                    onActuatorAdded={() => {
+                        refetch();
+                    }}
+                />
+            )}
+
+            {/* Delete Sensor Modal */}
+            <DeleteSensorModal
+                sensor={deletingSensor}
+                isOpen={!!deletingSensor}
+                onClose={() => setDeletingSensor(null)}
+                onSensorDeleted={() => {
+                    refetch();
+                    setDeletingSensor(null);
+                }}
+            />
+
+            {/* Update Sensor Area Modal */}
+            <UpdateSensorAreaModal
+                sensor={areaSensor}
+                farmId={device?.assignment?.farmId ?? 0}
+                isOpen={!!areaSensor}
+                onClose={() => setAreaSensor(null)}
+                onAreaUpdated={() => {
+                    refetch();
+                    setAreaSensor(null);
+                }}
+            />
+
+            {/* Update Sensor Calibration Modal */}
+            <UpdateSensorCalibrationModal
+                sensor={calibrationSensor}
+                isOpen={!!calibrationSensor}
+                onClose={() => setCalibrationSensor(null)}
+                onCalibrationUpdated={() => {
+                    setCalibrationSensor(null);
+                }}
+            />
+
+            {/* Rename Actuator Modal */}
+            {renamingActuator && (
+                <RenameActuatorModal
+                    actuator={renamingActuator}
+                    isOpen={true}
+                    onClose={() => setRenamingActuator(null)}
+                    onActuatorRenamed={() => {
+                        refetch();
+                        setRenamingActuator(null);
+                    }}
+                />
+            )}
+
+            {/* Update Actuator Modal */}
+            {updatingActuator && (
+                <UpdateActuatorModal
+                    actuator={updatingActuator}
+                    isOpen={true}
+                    onClose={() => setUpdatingActuator(null)}
+                    onActuatorUpdated={() => {
+                        refetch();
+                        setUpdatingActuator(null);
+                    }}
+                />
+            )}
+
+            {/* Update Actuator Area Modal */}
+            <UpdateActuatorAreaModal
+                actuator={areaActuator}
+                farmId={device?.assignment?.farmId ?? 0}
+                isOpen={!!areaActuator}
+                onClose={() => setAreaActuator(null)}
+                onAreaUpdated={() => {
+                    refetch();
+                    setAreaActuator(null);
+                }}
+            />
+
+            {/* Delete Actuator Modal */}
+            <DeleteActuatorModal
+                actuator={deletingActuator}
+                isOpen={!!deletingActuator}
+                onClose={() => setDeletingActuator(null)}
+                onActuatorDeleted={() => {
+                    refetch();
+                    setDeletingActuator(null);
+                }}
+            />
+
+            {/* Set Actuator Mode Modal */}
+            {modeActuator && (
+                <SetActuatorModeModal
+                    actuator={modeActuator}
+                    isOpen={true}
+                    onClose={() => setModeActuator(null)}
+                    onModeChanged={() => {
+                        refetch();
+                        setModeActuator(null);
+                    }}
+                />
+            )}
+
+            {/* Set Actuator Override Modal */}
+            {overrideActuator && (
+                <SetActuatorOverrideModal
+                    actuator={overrideActuator}
+                    isOpen={true}
+                    onClose={() => setOverrideActuator(null)}
+                    onOverrideSet={() => {
+                        refetch();
+                        setOverrideActuator(null);
                     }}
                 />
             )}

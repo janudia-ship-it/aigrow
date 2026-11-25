@@ -27,12 +27,18 @@ export function canEditDeviceName(
     permissions?: FarmMemberPermissions | null
 ): boolean {
     if (!user) return false;
-    const role = user.role?.toLowerCase();
-    if (role === "admin" || role === "superadmin") {
+    const role = user.role?.toLowerCase()?.trim();
+    if (
+        role === "admin" ||
+        role === "superadmin" ||
+        role === "super admin"
+    ) {
         return true;
     }
     return permissions?.device?.toLowerCase() === "manage";
 }
+
+export const canRenameSensor = canEditDeviceName;
 
 /**
  * Alias for canEditFarmProperties — determines whether a user can manage a farm
@@ -70,5 +76,24 @@ export function canUpdateDevice(user?: UserProfile | null): boolean {
 export const canMoveDevice = canUpdateDevice;
 export const canDeleteDevice = canUpdateDevice;
 export const canRenameDevice = canEditDeviceName;
+
+export function canRenameActuator(
+    user?: UserProfile | null,
+    permissions?: FarmMemberPermissions | null
+): boolean {
+    if (!user) return false;
+    const role = user.role?.toLowerCase()?.trim();
+    if (
+        role === "admin" ||
+        role === "superadmin" ||
+        role === "super admin" ||
+        role === "device manager" ||
+        role === "devicemanager"
+    ) {
+        return true;
+    }
+    return permissions?.device?.toLowerCase() === "manage";
+}
+
 
 

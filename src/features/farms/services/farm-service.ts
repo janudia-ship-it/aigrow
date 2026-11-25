@@ -5,6 +5,10 @@ import type {
     FarmDetailsApiResponse,
     UpdateFarmPayload,
     UpdateFarmApiResponse,
+    PagedFarms,
+    PagedFarmsApiResponse,
+    CreateFarmPayload,
+    CreateFarmApiResponse,
 } from "../types/farm.types";
 
 export const farmService = {
@@ -121,4 +125,95 @@ export async function updateFarmClient(
     }
 
     return result;
+}
+
+export async function getAllFarmsClient(params: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+} = {}): Promise<PagedFarms> {
+    const query = new URLSearchParams();
+    if (params.page) query.set("page", String(params.page));
+    if (params.pageSize) query.set("pageSize", String(params.pageSize));
+    if (params.search && params.search.trim()) {
+        query.set("search", params.search.trim().slice(0, 100));
+    }
+
+    const qs = query.toString();
+    const url = qs ? `/api/admin/farms?${qs}` : "/api/admin/farms";
+
+    const response = await fetch(url, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        cache: "no-store",
+    });
+
+    const result: PagedFarmsApiResponse = await response.json().catch(() => ({
+        errorCode: 500,
+        errorMessage: "Failed to fetch all farms",
+        success: false,
+        message: null,
+        data: null,
+    }));
+
+    if (!response.ok || !result.success || !result.data) {
+        if (result.errorCode === 2002 || response.status === 403) {
+            throw new Error("Forbidden. Only Admin or SuperAdmin can view all farms.");
+        }
+        throw new Error(result.errorMessage || "Unable to retrieve all farms");
+    }
+
+    return result.data;
+}
+
+export async function createFarmClient(
+    payload: CreateFarmPayload
+): Promise<CreateFarmApiResponse> {
+    const response = await fetch("/api/admin/farms", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+    });
+
+    const result: CreateFarmApiResponse = await response.json().catch(() => ({
+        errorCode: 500,
+        errorMessage: "Failed to create farm",
+        success: false,
+        message: null,
+        data: null,
+    }));
+
+    if (!response.ok || !result.success) {
+        throw new Error(result.errorMessage || "Unable to create farm");
+    }
+
+    return result;
+}
+
+export async function deleteFarmClient(farmId: number): Promise<void> {
+    const response = await fetch(`/api/admin/farms/${farmId}`, {
+        method: "DELETE",
+    });
+
+    const result = await response.json().catch(() => ({
+        errorCode: 500,
+        errorMessage: "Failed to delete farm",
+        success: false,
+        message: null,
+        data: null,
+    }));
+
+    if (!response.ok || !result.success) {
+        if (result.errorCode === 3200) {
+            throw new Error("Farm not found.");
+        }
+        if (result.errorCode === 2002 || response.status === 403) {
+            throw new Error("Forbidden. Only Admin or SuperAdmin can delete farms.");
+        }
+        throw new Error(result.errorMessage || "Unable to delete farm");
+    }
 }

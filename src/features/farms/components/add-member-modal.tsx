@@ -512,7 +512,6 @@ export default function AddMemberModal({
                                 </>
                             ) : (
                                 <>
-                                    <UserPlus size={14} />
                                     <span>Add Member</span>
                                 </>
                             )}
