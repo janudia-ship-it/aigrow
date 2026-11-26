@@ -35,7 +35,7 @@ export function Sidebar({ user, isMobile = false, isOpen = false, onClose }: Sid
     const pathname = usePathname();
     const router = useRouter();
 
-    const role = user?.role?.toLowerCase();
+    const role = user?.role?.toLowerCase()?.replace(/\s+/g, "");
     // Both admin and superadmin can see All Farms and All Devices
     const showAdminTabs = role === "admin" || role === "superadmin";
     const showSuperAdminTabs = role === "superadmin";

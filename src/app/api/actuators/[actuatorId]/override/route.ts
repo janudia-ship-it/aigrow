@@ -107,3 +107,61 @@ export async function POST(
         );
     }
 }
+
+// DELETE /api/actuators/[actuatorId]/override -> DELETE {BACKEND_URL}/api/v1/actuators/{actuatorId}/override
+export async function DELETE(
+    _request: NextRequest,
+    { params }: { params: Promise<{ actuatorId: string }> }
+) {
+    try {
+        const { actuatorId } = await params;
+        const id = Number(actuatorId);
+
+        if (!Number.isInteger(id) || id <= 0) {
+            return NextResponse.json(
+                { errorCode: 1000, errorMessage: "Invalid actuator ID.", success: false, message: null, data: null },
+                { status: 400 }
+            );
+        }
+
+        const session = await getAuthSession();
+        if (!session.accessToken) {
+            return NextResponse.json(
+                { errorCode: 401, errorMessage: "Unauthorized. Please log in.", success: false, message: null, data: null },
+                { status: 401 }
+            );
+        }
+
+        const response = await fetch(`${BACKEND_URL}/api/v1/actuators/${id}/override`, {
+            method: "DELETE",
+            headers: {
+                Authorization: `Bearer ${session.accessToken}`,
+            },
+        });
+
+        const result = await response.json().catch(() => ({
+            errorCode: 500,
+            errorMessage: "Invalid response from actuator override service",
+            success: false,
+            message: null,
+            data: null,
+        }));
+
+        return NextResponse.json(result, { status: response.status });
+    } catch (error) {
+        console.error("Clear Actuator Override API Error:", error);
+        return NextResponse.json(
+            {
+                errorCode: 500,
+                errorMessage:
+                    error instanceof Error && error.message === "fetch failed"
+                        ? "Unable to connect to backend server."
+                        : "Failed to clear actuator override",
+                success: false,
+                message: null,
+                data: null,
+            },
+            { status: 500 }
+        );
+    }
+}

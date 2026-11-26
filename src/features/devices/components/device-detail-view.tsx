@@ -514,12 +514,11 @@ export default function DeviceDetailView({
                                         actuatorTypeInfo={getActuatorType(actuator.actuatorType)}
                                         canManage={canManageActuators}
                                         isAdmin={isAuthorizedAdmin}
-                                        onRename={(a) => setRenamingActuator(a)}
-                                        onUpdateActuator={(a) => setUpdatingActuator(a)}
-                                        onUpdateArea={(a) => setAreaActuator(a)}
-                                        onDelete={(a) => setDeletingActuator(a)}
-                                        onChangeMode={(a) => setModeActuator(a)}
-                                        onSetOverride={(a) => setOverrideActuator(a)}
+                                        deviceId={device.id}
+                                        onRename={(a: Actuator) => setRenamingActuator(a)}
+                                        onUpdateActuator={(a: Actuator) => setUpdatingActuator(a)}
+                                        onUpdateArea={(a: Actuator) => setAreaActuator(a)}
+                                        onDelete={(a: Actuator) => setDeletingActuator(a)}
                                         onModeChanged={() => refetch()}
                                     />
                                 ))}

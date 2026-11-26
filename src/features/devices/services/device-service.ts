@@ -25,6 +25,22 @@ import type {
     SetActuatorOverrideResponse,
     PagedDevices,
     PagedDevicesApiResponse,
+    ActuatorRule,
+    ActuatorRulesApiResponse,
+    ActuatorRuleApiResponse,
+    RuleSensor,
+    RuleSensorsApiResponse,
+    CreateActuatorRulePayload,
+    UpdateActuatorRulePayload,
+    ActuatorSchedule,
+    ActuatorSchedulesApiResponse,
+    ActuatorScheduleApiResponse,
+    CreateActuatorSchedulePayload,
+    UpdateActuatorSchedulePayload,
+    ActuatorHistory,
+    ActuatorHistoryApiResponse,
+    ActuatorStateHistory,
+    ActuatorStateHistoryApiResponse,
 } from "../types/device";
 
 export async function getFarmDevices(
@@ -670,12 +686,39 @@ export async function setActuatorOverride(
     }
 }
 
+export async function deleteActuatorOverride(actuatorId: number): Promise<void> {
+    const response = await fetch(`/api/actuators/${actuatorId}/override`, {
+        method: "DELETE",
+    });
+
+    const result = await response.json().catch(() => ({
+        errorCode: 500,
+        errorMessage: "Failed to clear actuator override",
+        success: false,
+        message: null,
+        data: null,
+    }));
+
+    if (!response.ok || !result.success) {
+        if (result.errorCode === 4023) {
+            throw new Error("Cannot clear override: Remote control is disabled for this actuator.");
+        }
+        if (result.errorCode === 3302) {
+            throw new Error("Actuator not found.");
+        }
+        if (result.errorCode === 2002) {
+            throw new Error("Forbidden. Device Manage permission or an Admin role is required.");
+        }
+        throw new Error(result.errorMessage || "Unable to clear actuator override");
+    }
+}
+
+/** @deprecated Use deleteActuatorOverride instead */
 export async function clearActuatorOverride(
     actuatorId: number,
-    currentMode: ActuatorControlMode | string
+    _currentMode?: ActuatorControlMode | string
 ): Promise<void> {
-    // Re-sending current control mode removes the active override per API contract
-    await setActuatorMode(actuatorId, currentMode);
+    return deleteActuatorOverride(actuatorId);
 }
 
 export async function getAllDevices(params: {
@@ -726,5 +769,389 @@ export async function getAllDevices(params: {
 
     return result.data;
 }
+
+export async function getActuatorRules(actuatorId: number): Promise<ActuatorRule[]> {
+    const response = await fetch(`/api/actuators/${actuatorId}/rules`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+    });
+
+    const result: ActuatorRulesApiResponse = await response.json().catch(() => ({
+        errorCode: 500,
+        errorMessage: "Failed to fetch actuator rules",
+        success: false,
+        message: null,
+        data: null,
+    }));
+
+    if (!response.ok || !result.success || !result.data) {
+        if (result.errorCode === 3302) {
+            throw new Error("Actuator not found.");
+        }
+        if (result.errorCode === 2002) {
+            throw new Error("Forbidden. Device View permission required.");
+        }
+        throw new Error(result.errorMessage || "Unable to retrieve actuator rules");
+    }
+
+    return result.data;
+}
+
+export async function getRuleSensors(actuatorId: number): Promise<RuleSensor[]> {
+    const response = await fetch(`/api/actuators/${actuatorId}/rule-sensors`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+    });
+
+    const result: RuleSensorsApiResponse = await response.json().catch(() => ({
+        errorCode: 500,
+        errorMessage: "Failed to fetch rule sensors",
+        success: false,
+        message: null,
+        data: null,
+    }));
+
+    if (!response.ok || !result.success || !result.data) {
+        if (result.errorCode === 3302) {
+            throw new Error("Actuator not found.");
+        }
+        throw new Error(result.errorMessage || "Unable to retrieve rule sensors");
+    }
+
+    return result.data;
+}
+
+export async function createActuatorRule(
+    actuatorId: number,
+    payload: CreateActuatorRulePayload
+): Promise<ActuatorRule> {
+    const response = await fetch(`/api/actuators/${actuatorId}/rules`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    });
+
+    const result: ActuatorRuleApiResponse = await response.json().catch(() => ({
+        errorCode: 500,
+        errorMessage: "Failed to create actuator rule",
+        success: false,
+        message: null,
+        data: null,
+    }));
+
+    if (!response.ok || !result.success || !result.data) {
+        if (result.errorCode === 4025) {
+            throw new Error("A rule with this name already exists for this actuator.");
+        }
+        if (result.errorCode === 4028) {
+            throw new Error("Rule limit reached: maximum 10 rules per actuator.");
+        }
+        if (result.errorCode === 4024) {
+            throw new Error("Selected sensor cannot be used for this rule.");
+        }
+        if (result.errorCode === 3302) {
+            throw new Error("Actuator not found.");
+        }
+        if (result.errorCode === 1000) {
+            throw new Error("Validation failed. Please verify rule name and conditions.");
+        }
+        if (result.errorCode === 2002) {
+            throw new Error("Forbidden. Device Manage permission required.");
+        }
+        throw new Error(result.errorMessage || "Unable to create actuator rule");
+    }
+
+    return result.data;
+}
+
+export async function updateActuatorRule(
+    actuatorId: number,
+    ruleId: number,
+    payload: UpdateActuatorRulePayload
+): Promise<ActuatorRule> {
+    const response = await fetch(`/api/actuators/${actuatorId}/rules/${ruleId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    });
+
+    const result: ActuatorRuleApiResponse = await response.json().catch(() => ({
+        errorCode: 500,
+        errorMessage: "Failed to update actuator rule",
+        success: false,
+        message: null,
+        data: null,
+    }));
+
+    if (!response.ok || !result.success || !result.data) {
+        if (result.errorCode === 4025) {
+            throw new Error("A rule with this name already exists for this actuator.");
+        }
+        if (result.errorCode === 3303) {
+            throw new Error("Rule not found.");
+        }
+        if (result.errorCode === 4024) {
+            throw new Error("Selected sensor cannot be used for this rule.");
+        }
+        if (result.errorCode === 3302) {
+            throw new Error("Actuator not found.");
+        }
+        if (result.errorCode === 1000) {
+            throw new Error("Validation failed. Please verify rule name and conditions.");
+        }
+        if (result.errorCode === 2002) {
+            throw new Error("Forbidden. Device Manage permission required.");
+        }
+        throw new Error(result.errorMessage || "Unable to update actuator rule");
+    }
+
+    return result.data;
+}
+
+export async function deleteActuatorRule(
+    actuatorId: number,
+    ruleId: number
+): Promise<void> {
+    const response = await fetch(`/api/actuators/${actuatorId}/rules/${ruleId}`, {
+        method: "DELETE",
+    });
+
+    const result = await response.json().catch(() => ({
+        errorCode: 500,
+        errorMessage: "Failed to delete actuator rule",
+        success: false,
+        message: null,
+        data: null,
+    }));
+
+    if (!response.ok || !result.success) {
+        if (result.errorCode === 3303) {
+            throw new Error("Rule not found.");
+        }
+        if (result.errorCode === 3302) {
+            throw new Error("Actuator not found.");
+        }
+        if (result.errorCode === 2002) {
+            throw new Error("Forbidden. Device Manage permission required.");
+        }
+        throw new Error(result.errorMessage || "Unable to delete actuator rule");
+    }
+}
+
+export async function getActuatorSchedules(actuatorId: number): Promise<ActuatorSchedule[]> {
+    const response = await fetch(`/api/actuators/${actuatorId}/schedules`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+    });
+
+    const result: ActuatorSchedulesApiResponse = await response.json().catch(() => ({
+        errorCode: 500,
+        errorMessage: "Failed to fetch actuator schedules",
+        success: false,
+        message: null,
+        data: null,
+    }));
+
+    if (!response.ok || !result.success || !result.data) {
+        if (result.errorCode === 3302) {
+            throw new Error("Actuator not found.");
+        }
+        if (result.errorCode === 2002) {
+            throw new Error("Forbidden. Device View permission required.");
+        }
+        throw new Error(result.errorMessage || "Unable to retrieve actuator schedules");
+    }
+
+    return result.data;
+}
+
+export async function createActuatorSchedule(
+    actuatorId: number,
+    payload: CreateActuatorSchedulePayload
+): Promise<ActuatorSchedule> {
+    const response = await fetch(`/api/actuators/${actuatorId}/schedules`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    });
+
+    const result: ActuatorScheduleApiResponse = await response.json().catch(() => ({
+        errorCode: 500,
+        errorMessage: "Failed to create actuator schedule",
+        success: false,
+        message: null,
+        data: null,
+    }));
+
+    if (!response.ok || !result.success || !result.data) {
+        if (result.errorCode === 4026) {
+            throw new Error("A schedule with this name already exists for this actuator.");
+        }
+        if (result.errorCode === 4029) {
+            throw new Error("Schedule limit reached: maximum 10 schedules per actuator.");
+        }
+        if (result.errorCode === 3302) {
+            throw new Error("Actuator not found.");
+        }
+        if (result.errorCode === 1000) {
+            throw new Error(result.errorMessage || "Validation failed. Please verify schedule name and cron expression.");
+        }
+        if (result.errorCode === 2002) {
+            throw new Error("Forbidden. Device Manage permission required.");
+        }
+        throw new Error(result.errorMessage || "Unable to create actuator schedule");
+    }
+
+    return result.data;
+}
+
+export async function updateActuatorSchedule(
+    actuatorId: number,
+    scheduleId: number,
+    payload: UpdateActuatorSchedulePayload
+): Promise<ActuatorSchedule> {
+    const response = await fetch(`/api/actuators/${actuatorId}/schedules/${scheduleId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    });
+
+    const result: ActuatorScheduleApiResponse = await response.json().catch(() => ({
+        errorCode: 500,
+        errorMessage: "Failed to update actuator schedule",
+        success: false,
+        message: null,
+        data: null,
+    }));
+
+    if (!response.ok || !result.success || !result.data) {
+        if (result.errorCode === 4026) {
+            throw new Error("A schedule with this name already exists for this actuator.");
+        }
+        if (result.errorCode === 3304) {
+            throw new Error("Schedule not found.");
+        }
+        if (result.errorCode === 3302) {
+            throw new Error("Actuator not found.");
+        }
+        if (result.errorCode === 1000) {
+            throw new Error(result.errorMessage || "Validation failed. Please verify schedule name and cron expression.");
+        }
+        if (result.errorCode === 2002) {
+            throw new Error("Forbidden. Device Manage permission required.");
+        }
+        throw new Error(result.errorMessage || "Unable to update actuator schedule");
+    }
+
+    return result.data;
+}
+
+export async function deleteActuatorSchedule(
+    actuatorId: number,
+    scheduleId: number
+): Promise<void> {
+    const response = await fetch(`/api/actuators/${actuatorId}/schedules/${scheduleId}`, {
+        method: "DELETE",
+    });
+
+    const result = await response.json().catch(() => ({
+        errorCode: 500,
+        errorMessage: "Failed to delete actuator schedule",
+        success: false,
+        message: null,
+        data: null,
+    }));
+
+    if (!response.ok || !result.success) {
+        if (result.errorCode === 3304) {
+            throw new Error("Schedule not found.");
+        }
+        if (result.errorCode === 3302) {
+            throw new Error("Actuator not found.");
+        }
+        if (result.errorCode === 2002) {
+            throw new Error("Forbidden. Device Manage permission required.");
+        }
+        throw new Error(result.errorMessage || "Unable to delete actuator schedule");
+    }
+}
+
+export async function getActuatorHistory(
+    actuatorId: number,
+    from: string,
+    to: string
+): Promise<ActuatorHistory> {
+    const query = new URLSearchParams({ From: from, To: to });
+    const response = await fetch(`/api/actuators/${actuatorId}/history?${query.toString()}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+    });
+
+    const result: ActuatorHistoryApiResponse = await response.json().catch(() => ({
+        errorCode: 500,
+        errorMessage: "Failed to fetch actuator history",
+        success: false,
+        message: null,
+        data: null,
+    }));
+
+    if (!response.ok || !result.success || !result.data) {
+        if (result.errorCode === 3302) {
+            throw new Error("Actuator not found.");
+        }
+        if (result.errorCode === 1000) {
+            throw new Error(result.errorMessage || "Validation failed: please check date range (max 92 days).");
+        }
+        if (result.errorCode === 2002) {
+            throw new Error("Forbidden. Device View permission required.");
+        }
+        throw new Error(result.errorMessage || "Unable to retrieve actuator history");
+    }
+
+    return result.data;
+}
+
+export async function getActuatorStateHistory(
+    actuatorId: number,
+    from: string,
+    to: string
+): Promise<ActuatorStateHistory> {
+    const query = new URLSearchParams({ from, to });
+    const response = await fetch(`/api/actuators/${actuatorId}/state-history?${query.toString()}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+    });
+
+    const result: ActuatorStateHistoryApiResponse = await response.json().catch(() => ({
+        errorCode: 500,
+        errorMessage: "Failed to fetch actuator state history",
+        success: false,
+        message: null,
+        data: null,
+    }));
+
+    if (!response.ok || !result.success || !result.data) {
+        if (result.errorCode === 3302) {
+            throw new Error("Actuator not found.");
+        }
+        if (result.errorCode === 1000) {
+            throw new Error(result.errorMessage || "Validation failed: please check datetime range (max 184 days).");
+        }
+        if (result.errorCode === 2002) {
+            throw new Error("Forbidden. Device View permission required.");
+        }
+        throw new Error(result.errorMessage || "Unable to retrieve actuator state history");
+    }
+
+    return result.data;
+}
+
+
+
 
 

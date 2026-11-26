@@ -265,6 +265,203 @@ export interface SetActuatorOverrideResponse {
     data: null;
 }
 
+export interface RuleCondition {
+    id: number;
+    sensorId: number;
+    operator: string;
+    threshold: number;
+}
+
+export interface RuleConditionInput {
+    sensorId: number;
+    operator: string;
+    threshold: number;
+}
+
+export interface ActuatorRule {
+    id: number;
+    name: string;
+    matchType: "All" | "Any" | string;
+    targetState: boolean;
+    isEnabled: boolean;
+    conditions: RuleCondition[];
+}
+
+export interface CreateActuatorRulePayload {
+    name: string;
+    matchType: "All" | "Any" | string;
+    targetState: boolean;
+    isEnabled: boolean;
+    conditions: RuleConditionInput[];
+}
+
+export interface UpdateActuatorRulePayload {
+    name: string;
+    matchType: "All" | "Any" | string;
+    targetState: boolean;
+    isEnabled: boolean;
+    conditions: RuleConditionInput[];
+}
+
+export interface RuleSensor {
+    id: number;
+    name: string;
+    sensorType: string;
+    unit: string | null;
+    deviceId: number;
+    deviceName: string;
+    isOwnDevice: boolean;
+}
+
+export interface ActuatorRulesApiResponse {
+    errorCode: number;
+    errorMessage: string | null;
+    success: boolean;
+    message: string | null;
+    data: ActuatorRule[] | null;
+}
+
+export interface ActuatorRuleApiResponse {
+    errorCode: number;
+    errorMessage: string | null;
+    success: boolean;
+    message: string | null;
+    data: ActuatorRule | null;
+}
+
+export interface RuleSensorsApiResponse {
+    errorCode: number;
+    errorMessage: string | null;
+    success: boolean;
+    message: string | null;
+    data: RuleSensor[] | null;
+}
+
+export interface ActuatorSchedule {
+    id: number;
+    name: string;
+    cronExpression: string;
+    durationSeconds: number;
+    isEnabled: boolean;
+}
+
+export interface CreateActuatorSchedulePayload {
+    name: string;
+    cronExpression: string;
+    durationSeconds: number;
+    isEnabled: boolean;
+}
+
+export interface UpdateActuatorSchedulePayload {
+    name: string;
+    cronExpression: string;
+    durationSeconds: number;
+    isEnabled: boolean;
+}
+
+export interface ActuatorSchedulesApiResponse {
+    errorCode: number;
+    errorMessage: string | null;
+    success: boolean;
+    message: string | null;
+    data: ActuatorSchedule[] | null;
+}
+
+export interface ActuatorScheduleApiResponse {
+    errorCode: number;
+    errorMessage: string | null;
+    success: boolean;
+    message: string | null;
+    data: ActuatorSchedule | null;
+}
+
+export interface ActuatorModePeriod {
+    mode: string;
+    from: string;
+    to: string | null;
+    setBy: string | null;
+}
+
+export interface RulePeriodCondition {
+    sensorId: number;
+    sensorName: string;
+    deviceName: string;
+    operator: string;
+    threshold: number;
+}
+
+export interface ActuatorRulePeriod {
+    ruleId: number;
+    name: string;
+    matchType: string;
+    targetState: boolean;
+    isEnabled: boolean;
+    conditions: RulePeriodCondition[];
+    from: string;
+    to: string | null;
+    createdAt: string;
+    createdBy: string | null;
+    updatedAt: string | null;
+    updatedBy: string | null;
+}
+
+export interface ActuatorSchedulePeriod {
+    scheduleId: number;
+    name: string;
+    cronExpression: string;
+    durationSeconds: number;
+    isEnabled: boolean;
+    from: string;
+    to: string | null;
+    createdAt: string;
+    createdBy: string | null;
+    updatedAt: string | null;
+    updatedBy: string | null;
+}
+
+export interface ActuatorOverrideEvent {
+    at: string;
+    kind: "Set" | "Removed" | "Expired" | string;
+    by: string | null;
+    state: boolean;
+    expiresAt: string | null;
+}
+
+export interface ActuatorHistory {
+    modes: ActuatorModePeriod[];
+    rules: ActuatorRulePeriod[];
+    schedules: ActuatorSchedulePeriod[];
+    overrideEvents: ActuatorOverrideEvent[];
+}
+
+export interface ActuatorHistoryApiResponse {
+    errorCode: number;
+    errorMessage: string | null;
+    success: boolean;
+    message: string | null;
+    data: ActuatorHistory | null;
+}
+
+export interface ActuatorStateEvent {
+    time: string;
+    status: number; // 1 = ON, 0 = OFF
+    mode: string;
+}
+
+export interface ActuatorStateHistory {
+    events: ActuatorStateEvent[];
+}
+
+export interface ActuatorStateHistoryApiResponse {
+    errorCode: number;
+    errorMessage: string | null;
+    success: boolean;
+    message: string | null;
+    data: ActuatorStateHistory | null;
+}
+
+
+
 
 
 
