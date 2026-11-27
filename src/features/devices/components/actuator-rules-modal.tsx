@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
     X,
     Sliders,
@@ -22,6 +22,7 @@ import type {
     ActuatorRule,
     RuleSensor,
     RuleConditionInput,
+    Sensor,
 } from "../types/device";
 import {
     getActuatorRules,
@@ -29,14 +30,16 @@ import {
     createActuatorRule,
     updateActuatorRule,
     deleteActuatorRule,
+    getSensorReadings,
 } from "../services/device-service";
 
 interface ActuatorRulesModalProps {
     actuator: Actuator | null;
     isOpen: boolean;
     canManage: boolean;
+    sensorsList?: Sensor[];
     onClose: () => void;
-    onRulesChanged?: () => void;
+    onRulesChanged?: (targetState?: boolean) => void;
 }
 
 const OPERATORS = [
@@ -46,10 +49,93 @@ const OPERATORS = [
     { value: "<", label: "< (Less than)" },
 ];
 
+/**
+ * Evaluates whether rule conditions are currently met against live sensor values.
+ */
+async function checkIfRuleConditionsMet(
+    conditions: RuleConditionInput[],
+    matchType: "All" | "Any" | string,
+    deviceSensors?: Sensor[]
+): Promise<boolean> {
+    if (!conditions || conditions.length === 0) return false;
+
+    const conditionResults: boolean[] = [];
+
+    for (const c of conditions) {
+        let currentVal: number | null = null;
+
+        // 1. Check if sensor is in deviceSensors (local device sensors with live value)
+        const matched = deviceSensors?.find((s) => s.id === Number(c.sensorId));
+        if (matched && typeof matched.value === "number") {
+            currentVal = matched.value;
+        } else {
+            // 2. If not local or value is null, try fetching latest reading from API
+            try {
+                const now = new Date();
+                const past = new Date(Date.now() - 24 * 60 * 60 * 1000);
+                const readings = await getSensorReadings(
+                    Number(c.sensorId),
+                    past.toISOString(),
+                    now.toISOString()
+                );
+                const points = readings?.points || [];
+                if (points.length > 0) {
+                    const latest = points[points.length - 1];
+                    currentVal = latest.avg ?? latest.max ?? latest.min ?? null;
+                }
+            } catch {
+                currentVal = null;
+            }
+        }
+
+        // If sensor value cannot be determined, treat as not met
+        if (currentVal === null || isNaN(currentVal)) {
+            conditionResults.push(false);
+            continue;
+        }
+
+        // Evaluate operator
+        const thresh = Number(c.threshold);
+        let isMet = false;
+        switch (c.operator) {
+            case ">":
+                isMet = currentVal > thresh;
+                break;
+            case ">=":
+                isMet = currentVal >= thresh;
+                break;
+            case "<":
+                isMet = currentVal < thresh;
+                break;
+            case "<=":
+                isMet = currentVal <= thresh;
+                break;
+            case "==":
+            case "=":
+                isMet = currentVal === thresh;
+                break;
+            case "!=":
+                isMet = currentVal !== thresh;
+                break;
+            default:
+                isMet = false;
+        }
+        conditionResults.push(isMet);
+    }
+
+    const isAny = String(matchType).toLowerCase() === "any";
+    if (isAny) {
+        return conditionResults.some((res) => res === true);
+    } else {
+        return conditionResults.length > 0 && conditionResults.every((res) => res === true);
+    }
+}
+
 export default function ActuatorRulesModal({
     actuator,
     isOpen,
     canManage,
+    sensorsList,
     onClose,
     onRulesChanged,
 }: ActuatorRulesModalProps) {
@@ -110,10 +196,39 @@ export default function ActuatorRulesModal({
         }
     }, [isOpen, actuator, loadData]);
 
+    // Group rule sensors: own device sensors first, then shared sensors grouped by device name
+    const ownSensors = useMemo(() => {
+        return sensors.filter((s) => s.isOwnDevice);
+    }, [sensors]);
+
+    const ownDeviceName = useMemo(() => {
+        return ownSensors[0]?.deviceName || "This Device";
+    }, [ownSensors]);
+
+    const sharedSensorsByDevice = useMemo(() => {
+        const map = new Map<string, RuleSensor[]>();
+        sensors.forEach((s) => {
+            if (!s.isOwnDevice) {
+                const devName = s.deviceName || "Other Device";
+                if (!map.has(devName)) {
+                    map.set(devName, []);
+                }
+                map.get(devName)!.push(s);
+            }
+        });
+        return map;
+    }, [sensors]);
+
+    const getDefaultSensorId = useCallback(() => {
+        if (sensors.length === 0) return 0;
+        const own = sensors.find((s) => s.isOwnDevice);
+        return (own || sensors[0]).id;
+    }, [sensors]);
+
     if (!isOpen || !actuator) return null;
 
     const handleOpenCreate = () => {
-        const defaultSensorId = sensors.length > 0 ? sensors[0].id : 0;
+        const defaultSensorId = getDefaultSensorId();
         setFormName("");
         setFormMatchType("All");
         setFormTargetState(true);
@@ -144,7 +259,7 @@ export default function ActuatorRulesModal({
 
     const handleAddCondition = () => {
         if (formConditions.length >= 5) return;
-        const defaultSensorId = sensors.length > 0 ? sensors[0].id : 0;
+        const defaultSensorId = getDefaultSensorId();
         setFormConditions((prev) => [
             ...prev,
             { sensorId: defaultSensorId, operator: ">=", threshold: 0 },
@@ -236,7 +351,19 @@ export default function ActuatorRulesModal({
 
             await loadData();
             setView("list");
-            onRulesChanged?.();
+
+            // Evaluate if conditions are met to conditionally apply targetState to current state
+            const conditionsMet = await checkIfRuleConditionsMet(
+                payload.conditions,
+                payload.matchType,
+                sensorsList
+            );
+
+            if (conditionsMet && payload.isEnabled) {
+                onRulesChanged?.(payload.targetState);
+            } else {
+                onRulesChanged?.();
+            }
         } catch (err: unknown) {
             setFormError(err instanceof Error ? err.message : "Failed to save rule");
         } finally {
@@ -263,11 +390,12 @@ export default function ActuatorRulesModal({
         if (!canManage) return;
         setActionLoading(true);
         try {
+            const nextEnabled = !rule.isEnabled;
             await updateActuatorRule(actuator.id, rule.id, {
                 name: rule.name,
                 matchType: rule.matchType,
                 targetState: rule.targetState,
-                isEnabled: !rule.isEnabled,
+                isEnabled: nextEnabled,
                 conditions: rule.conditions.map((c) => ({
                     sensorId: c.sensorId,
                     operator: c.operator,
@@ -275,7 +403,24 @@ export default function ActuatorRulesModal({
                 })),
             });
             await loadData();
-            onRulesChanged?.();
+            if (nextEnabled) {
+                const conditionsMet = await checkIfRuleConditionsMet(
+                    rule.conditions.map((c) => ({
+                        sensorId: c.sensorId,
+                        operator: c.operator,
+                        threshold: c.threshold,
+                    })),
+                    rule.matchType,
+                    sensorsList
+                );
+                if (conditionsMet) {
+                    onRulesChanged?.(rule.targetState);
+                } else {
+                    onRulesChanged?.();
+                }
+            } else {
+                onRulesChanged?.();
+            }
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : "Failed to toggle rule");
         } finally {
@@ -286,9 +431,10 @@ export default function ActuatorRulesModal({
     const getSensorLabel = (sensorId: number) => {
         const found = sensors.find((s) => s.id === sensorId);
         if (!found) return `Sensor #${sensorId}`;
-        const unitStr = found.unit ? ` (${found.unit})` : "";
-        const sharedStr = !found.isOwnDevice ? ` • ${found.deviceName}` : "";
-        return `${found.name}${unitStr}${sharedStr}`;
+        const typeStr = found.sensorType ? ` (${found.sensorType})` : "";
+        const unitStr = found.unit ? ` [${found.unit}]` : "";
+        const sharedStr = !found.isOwnDevice ? ` • Shared from ${found.deviceName}` : "";
+        return `${found.name}${typeStr}${unitStr}${sharedStr}`;
     };
 
     return (
@@ -395,11 +541,10 @@ export default function ActuatorRulesModal({
                                     {rules.map((rule) => (
                                         <div
                                             key={rule.id}
-                                            className={`rounded-xl border p-4 space-y-3 transition ${
-                                                rule.isEnabled
-                                                    ? "border-gray-200 dark:border-gray-800 bg-[#EEF4F1]/40 dark:bg-[#142623]/30"
-                                                    : "border-gray-200/60 dark:border-gray-800/60 bg-gray-50/50 dark:bg-gray-900/30 opacity-75"
-                                            }`}
+                                            className={`rounded-xl border p-4 space-y-3 transition ${rule.isEnabled
+                                                ? "border-gray-200 dark:border-gray-800 bg-[#EEF4F1]/40 dark:bg-[#142623]/30"
+                                                : "border-gray-200/60 dark:border-gray-800/60 bg-gray-50/50 dark:bg-gray-900/30 opacity-75"
+                                                }`}
                                         >
                                             {/* Rule Header */}
                                             <div className="flex items-center justify-between flex-wrap gap-2">
@@ -410,11 +555,10 @@ export default function ActuatorRulesModal({
 
                                                     {/* Target State Pill */}
                                                     <span
-                                                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                                            rule.targetState
-                                                                ? "bg-[#D7E8DF] text-[#1E5440] dark:bg-[#1C3A32] dark:text-[#6EE7B7]"
-                                                                : "bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                                                        }`}
+                                                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${rule.targetState
+                                                            ? "bg-[#D7E8DF] text-[#1E5440] dark:bg-[#1C3A32] dark:text-[#6EE7B7]"
+                                                            : "bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                                                            }`}
                                                     >
                                                         Target: {rule.targetState ? "ON" : "OFF"}
                                                     </span>
@@ -437,11 +581,10 @@ export default function ActuatorRulesModal({
                                                                 onClick={() => handleQuickToggleEnabled(rule)}
                                                                 disabled={actionLoading}
                                                                 title={rule.isEnabled ? "Click to disable rule" : "Click to enable rule"}
-                                                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold transition cursor-pointer ${
-                                                                    rule.isEnabled
-                                                                        ? "bg-[#004C4B] text-white dark:bg-[#00E5A3] dark:text-[#001A1A]"
-                                                                        : "bg-gray-200 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-                                                                }`}
+                                                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold transition cursor-pointer ${rule.isEnabled
+                                                                    ? "bg-[#004C4B] text-white dark:bg-[#00E5A3] dark:text-[#001A1A]"
+                                                                    : "bg-gray-200 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                                                                    }`}
                                                             >
                                                                 <Power size={11} />
                                                                 <span>{rule.isEnabled ? "Enabled" : "Disabled"}</span>
@@ -605,22 +748,20 @@ export default function ActuatorRulesModal({
                                         <button
                                             type="button"
                                             onClick={() => setFormTargetState(false)}
-                                            className={`py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                                                !formTargetState
-                                                    ? "bg-gray-700 text-white dark:bg-gray-200 dark:text-gray-900 shadow-xs"
-                                                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900"
-                                            }`}
+                                            className={`py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${!formTargetState
+                                                ? "bg-gray-700 text-white dark:bg-gray-200 dark:text-gray-900 shadow-xs"
+                                                : "text-gray-600 dark:text-gray-400 hover:text-gray-900"
+                                                }`}
                                         >
                                             Turn OFF
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => setFormTargetState(true)}
-                                            className={`py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                                                formTargetState
-                                                    ? "bg-[#004C4B] dark:bg-[#00E5A3] text-white dark:text-[#001A1A] shadow-xs"
-                                                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900"
-                                            }`}
+                                            className={`py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${formTargetState
+                                                ? "bg-[#004C4B] dark:bg-[#00E5A3] text-white dark:text-[#001A1A] shadow-xs"
+                                                : "text-gray-600 dark:text-gray-400 hover:text-gray-900"
+                                                }`}
                                         >
                                             Turn ON
                                         </button>
@@ -636,22 +777,20 @@ export default function ActuatorRulesModal({
                                         <button
                                             type="button"
                                             onClick={() => setFormMatchType("All")}
-                                            className={`py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                                                formMatchType === "All"
-                                                    ? "bg-[#004C4B] dark:bg-[#00E5A3] text-white dark:text-[#001A1A] shadow-xs"
-                                                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900"
-                                            }`}
+                                            className={`py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${formMatchType === "All"
+                                                ? "bg-[#004C4B] dark:bg-[#00E5A3] text-white dark:text-[#001A1A] shadow-xs"
+                                                : "text-gray-600 dark:text-gray-400 hover:text-gray-900"
+                                                }`}
                                         >
                                             ALL (AND)
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => setFormMatchType("Any")}
-                                            className={`py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                                                formMatchType === "Any"
-                                                    ? "bg-[#004C4B] dark:bg-[#00E5A3] text-white dark:text-[#001A1A] shadow-xs"
-                                                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900"
-                                            }`}
+                                            className={`py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${formMatchType === "Any"
+                                                ? "bg-[#004C4B] dark:bg-[#00E5A3] text-white dark:text-[#001A1A] shadow-xs"
+                                                : "text-gray-600 dark:text-gray-400 hover:text-gray-900"
+                                                }`}
                                         >
                                             ANY (OR)
                                         </button>
@@ -696,99 +835,191 @@ export default function ActuatorRulesModal({
 
                                 {/* Conditions List */}
                                 <div className="space-y-2.5">
+                                    {sensors.length === 0 && (
+                                        <div className="flex items-start gap-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 p-3 text-xs text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
+                                            <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                                            <div>
+                                                <p className="font-semibold">No Rule Sensors Available</p>
+                                                <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5">
+                                                    No sensors are attached to this device, and no other devices on this farm are currently sharing sensors. Auto rules require at least one available sensor.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {formConditions.map((cond, idx) => {
                                         const selectedSensor = sensors.find((s) => s.id === Number(cond.sensorId));
                                         return (
                                             <div
                                                 key={idx}
-                                                className="grid grid-cols-[1fr_auto_100px_auto] gap-2 items-center rounded-xl bg-gray-50/70 dark:bg-[#1A1A1E]/80 p-2.5 border border-gray-200 dark:border-gray-700"
+                                                className="space-y-2 rounded-xl bg-gray-50/70 dark:bg-[#1A1A1E]/80 p-2.5 border border-gray-200 dark:border-gray-700"
                                             >
-                                                {/* Sensor Selection */}
-                                                <div>
-                                                    <select
-                                                        value={cond.sensorId}
-                                                        onChange={(e) =>
-                                                            handleConditionChange(
-                                                                idx,
-                                                                "sensorId",
-                                                                Number(e.target.value)
-                                                            )
-                                                        }
-                                                        className="w-full text-xs rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#121214] px-2.5 py-1.5 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-[#004C4B]"
-                                                    >
-                                                        {sensors.length === 0 ? (
-                                                            <option value={0}>No sensors available</option>
-                                                        ) : (
-                                                            sensors.map((s) => (
-                                                                <option key={s.id} value={s.id}>
-                                                                    {s.name} ({s.sensorType})
-                                                                    {!s.isOwnDevice ? ` • [Shared: ${s.deviceName}]` : ""}
-                                                                    {s.unit ? ` [${s.unit}]` : ""}
+                                                <div className="grid grid-cols-[1fr_auto_100px_auto] gap-2 items-center">
+                                                    {/* Sensor Selection */}
+                                                    <div>
+                                                        <select
+                                                            value={cond.sensorId}
+                                                            onChange={(e) =>
+                                                                handleConditionChange(
+                                                                    idx,
+                                                                    "sensorId",
+                                                                    Number(e.target.value)
+                                                                )
+                                                            }
+                                                            className="w-full text-xs rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#121214] px-2.5 py-1.5 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-[#004C4B]"
+                                                        >
+                                                            {sensors.length === 0 ? (
+                                                                <option value={0}>No sensors available</option>
+                                                            ) : (
+                                                                <>
+                                                                    {/* 1. Own Device Sensors first per API specification */}
+                                                                    {ownSensors.length > 0 && (
+                                                                        <optgroup label={`This Device (${ownDeviceName})`}>
+                                                                            {ownSensors.map((s) => (
+                                                                                <option key={s.id} value={s.id}>
+                                                                                    {s.name} ({s.sensorType}){s.unit ? ` [${s.unit}]` : ""}
+                                                                                </option>
+                                                                            ))}
+                                                                        </optgroup>
+                                                                    )}
+
+                                                                    {/* 2. Shared sensors from farm's other devices */}
+                                                                    {Array.from(sharedSensorsByDevice.entries()).map(([deviceName, devSensors]) => (
+                                                                        <optgroup key={deviceName} label={`Shared from ${deviceName}`}>
+                                                                            {devSensors.map((s) => (
+                                                                                <option key={s.id} value={s.id}>
+                                                                                    {s.name} ({s.sensorType}){s.unit ? ` [${s.unit}]` : ""}
+                                                                                </option>
+                                                                            ))}
+                                                                        </optgroup>
+                                                                    ))}
+                                                                </>
+                                                            )}
+                                                        </select>
+                                                    </div>
+
+                                                    {/* Operator Selection */}
+                                                    <div>
+                                                        <select
+                                                            value={cond.operator}
+                                                            onChange={(e) =>
+                                                                handleConditionChange(
+                                                                    idx,
+                                                                    "operator",
+                                                                    e.target.value
+                                                                )
+                                                            }
+                                                            className="text-xs rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#121214] px-2 py-1.5 text-gray-800 dark:text-gray-100 font-mono font-bold focus:outline-none focus:ring-1 focus:ring-[#004C4B]"
+                                                        >
+                                                            {OPERATORS.map((op) => (
+                                                                <option key={op.value} value={op.value}>
+                                                                    {op.value}
                                                                 </option>
-                                                            ))
+                                                            ))}
+                                                        </select>
+                                                    </div>
+
+                                                    {/* Threshold Input */}
+                                                    <div className="relative">
+                                                        <input
+                                                            type="number"
+                                                            step="0.001"
+                                                            min="-9999999.999"
+                                                            max="9999999.999"
+                                                            value={cond.threshold}
+                                                            onChange={(e) =>
+                                                                handleConditionChange(
+                                                                    idx,
+                                                                    "threshold",
+                                                                    e.target.value === "" ? "" : Number(e.target.value)
+                                                                )
+                                                            }
+                                                            required
+                                                            placeholder="0"
+                                                            className="w-full text-xs rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#121214] pl-2.5 pr-9 py-1.5 text-gray-800 dark:text-gray-100 font-semibold focus:outline-none focus:ring-1 focus:ring-[#004C4B]"
+                                                        />
+                                                        {selectedSensor?.unit && (
+                                                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 pointer-events-none">
+                                                                {selectedSensor.unit}
+                                                            </span>
                                                         )}
-                                                    </select>
+                                                    </div>
+
+                                                    {/* Remove Condition */}
+                                                    <div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleRemoveCondition(idx)}
+                                                            disabled={formConditions.length <= 1}
+                                                            className="p-1.5 text-gray-400 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+                                                            title="Remove condition"
+                                                        >
+                                                            <Trash2 size={13} />
+                                                        </button>
+                                                    </div>
                                                 </div>
 
-                                                {/* Operator Selection */}
-                                                <div>
-                                                    <select
-                                                        value={cond.operator}
-                                                        onChange={(e) =>
-                                                            handleConditionChange(
-                                                                idx,
-                                                                "operator",
-                                                                e.target.value
-                                                            )
+                                                {/* Selected Sensor Information Badge Strip with live condition evaluation */}
+                                                {selectedSensor && (() => {
+                                                    const liveVal = sensorsList?.find((s) => s.id === selectedSensor.id)?.value;
+                                                    let isConditionMet: boolean | null = null;
+                                                    if (typeof liveVal === "number" && !isNaN(Number(cond.threshold))) {
+                                                        const thresh = Number(cond.threshold);
+                                                        switch (cond.operator) {
+                                                            case ">": isConditionMet = liveVal > thresh; break;
+                                                            case ">=": isConditionMet = liveVal >= thresh; break;
+                                                            case "<": isConditionMet = liveVal < thresh; break;
+                                                            case "<=": isConditionMet = liveVal <= thresh; break;
+                                                            case "==": case "=": isConditionMet = liveVal === thresh; break;
+                                                            case "!=": isConditionMet = liveVal !== thresh; break;
                                                         }
-                                                        className="text-xs rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#121214] px-2 py-1.5 text-gray-800 dark:text-gray-100 font-mono font-bold focus:outline-none focus:ring-1 focus:ring-[#004C4B]"
-                                                    >
-                                                        {OPERATORS.map((op) => (
-                                                            <option key={op.value} value={op.value}>
-                                                                {op.value}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                </div>
+                                                    }
 
-                                                {/* Threshold Input */}
-                                                <div className="relative">
-                                                    <input
-                                                        type="number"
-                                                        step="0.001"
-                                                        min="-9999999.999"
-                                                        max="9999999.999"
-                                                        value={cond.threshold}
-                                                        onChange={(e) =>
-                                                            handleConditionChange(
-                                                                idx,
-                                                                "threshold",
-                                                                e.target.value === "" ? "" : Number(e.target.value)
-                                                            )
-                                                        }
-                                                        required
-                                                        placeholder="0"
-                                                        className="w-full text-xs rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#121214] px-2.5 py-1.5 text-gray-800 dark:text-gray-100 font-semibold focus:outline-none focus:ring-1 focus:ring-[#004C4B]"
-                                                    />
-                                                    {selectedSensor?.unit && (
-                                                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 pointer-events-none">
-                                                            {selectedSensor.unit}
-                                                        </span>
-                                                    )}
-                                                </div>
-
-                                                {/* Remove Condition */}
-                                                <div>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleRemoveCondition(idx)}
-                                                        disabled={formConditions.length <= 1}
-                                                        className="p-1.5 text-gray-400 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
-                                                        title="Remove condition"
-                                                    >
-                                                        <Trash2 size={13} />
-                                                    </button>
-                                                </div>
+                                                    return (
+                                                        <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400 pl-1 flex-wrap pt-0.5">
+                                                            <span
+                                                                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${selectedSensor.isOwnDevice
+                                                                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50"
+                                                                    : "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50"
+                                                                    }`}
+                                                            >
+                                                                <span
+                                                                    className={`h-1.5 w-1.5 rounded-full ${selectedSensor.isOwnDevice
+                                                                        ? "bg-emerald-600"
+                                                                        : "bg-blue-600"
+                                                                        }`}
+                                                                />
+                                                                {selectedSensor.isOwnDevice
+                                                                    ? "Local Device"
+                                                                    : `Shared: ${selectedSensor.deviceName}`}
+                                                            </span>
+                                                            <span>
+                                                                Type:{" "}
+                                                                <strong className="text-gray-700 dark:text-gray-300 font-medium">
+                                                                    {selectedSensor.sensorType}
+                                                                </strong>
+                                                            </span>
+                                                            {typeof liveVal === "number" && (
+                                                                <span>
+                                                                    Current:{" "}
+                                                                    <strong className="text-gray-800 dark:text-gray-200 font-semibold">
+                                                                        {liveVal} {selectedSensor.unit || ""}
+                                                                    </strong>
+                                                                </span>
+                                                            )}
+                                                            {isConditionMet !== null && (
+                                                                <span
+                                                                    className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${isConditionMet
+                                                                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                                                                        : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border border-gray-200 dark:border-gray-700"
+                                                                        }`}
+                                                                >
+                                                                    {isConditionMet ? "✓ Condition met" : "✕ Condition not met"}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })()}
                                             </div>
                                         );
                                     })}
@@ -807,7 +1038,7 @@ export default function ActuatorRulesModal({
                                 </button>
                                 <button
                                     type="submit"
-                                    disabled={actionLoading}
+                                    disabled={actionLoading || sensors.length === 0}
                                     className="px-5 py-2 rounded-xl bg-[#004C4B] dark:bg-[#00E5A3] text-white dark:text-[#001A1A] text-xs font-semibold hover:opacity-90 transition disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
                                 >
                                     {actionLoading ? (

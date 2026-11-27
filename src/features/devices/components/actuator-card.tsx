@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
     MoreVertical,
@@ -18,8 +18,9 @@ import {
     RotateCcw,
     Clock,
 } from "lucide-react";
-import type { Actuator, ActuatorType } from "../types/device";
-import { setActuatorMode, setActuatorOverride, deleteActuatorOverride } from "../services/device-service";
+import type { Actuator, ActuatorType, Sensor } from "../types/device";
+import { setActuatorMode, setActuatorOverride, deleteActuatorOverride, getActuatorRules } from "../services/device-service";
+import { evaluateEnabledActuatorRules } from "../utils/rule-evaluator";
 import ActuatorRulesModal from "./actuator-rules-modal";
 import ActuatorSchedulesModal from "./actuator-schedules-modal";
 
@@ -29,6 +30,7 @@ interface ActuatorCardProps {
     canManage: boolean;
     isAdmin?: boolean;
     deviceId?: number;
+    sensors?: Sensor[];
     onRename: (actuator: Actuator) => void;
     onUpdateActuator?: (actuator: Actuator) => void;
     onUpdateArea?: (actuator: Actuator) => void;
@@ -42,6 +44,7 @@ export default function ActuatorCard({
     canManage,
     isAdmin = false,
     deviceId,
+    sensors,
     onRename,
     onUpdateActuator,
     onUpdateArea,
@@ -59,6 +62,17 @@ export default function ActuatorCard({
     const [localMode, setLocalMode] = useState<string>(actuator.controlMode);
     const [localValue, setLocalValue] = useState<number | null>(actuator.value);
     const menuRef = useRef<HTMLDivElement>(null);
+    const pendingModeRef = useRef<string | null>(null);
+
+    // Remembers the last manual On/Off choice the user explicitly made.
+    // When switching back from Auto/Schedule → Manual, we restore THIS state
+    // (not the auto-rule or server state) so manual intent is preserved.
+    const [lastManualMode, setLastManualMode] = useState<"On" | "Off">(() => {
+        const m = actuator.controlMode?.toLowerCase();
+        if (m === "on") return "On";
+        if (m === "off") return "Off";
+        return "Off"; // default when device starts in Auto/Schedule
+    });
 
     // Inline override panel: what the user has selected to apply
     const [overrideState, setOverrideState] = useState<boolean>(actuator.override?.state ?? true);
@@ -71,6 +85,9 @@ export default function ActuatorCard({
         actuator.override?.state ?? null
     );
 
+    // The currently APPLIED rule target state when creating/editing a rule
+    const [appliedRuleState, setAppliedRuleState] = useState<boolean | null>(null);
+
     const DURATION_PRESETS = [
         { label: "Until Cleared", minutes: null },
         { label: "15m", minutes: 15 },
@@ -82,22 +99,42 @@ export default function ActuatorCard({
 
     // Sync local state whenever fresh actuator data arrives from the parent.
     useEffect(() => {
-        setLocalMode(actuator.controlMode);
+        // If a mode change is pending and server hasn't caught up, preserve optimistic localMode
+        if (pendingModeRef.current) {
+            if (actuator.controlMode?.toLowerCase() === pendingModeRef.current.toLowerCase()) {
+                pendingModeRef.current = null;
+                setLocalMode(actuator.controlMode);
+            }
+        } else {
+            setLocalMode(actuator.controlMode);
+        }
+
+        // When a rule was applied and server confirms it, clear the applied rule state
+        if (appliedRuleState !== null) {
+            if (actuator.value === (appliedRuleState ? 1 : 0)) {
+                setAppliedRuleState(null);
+            }
+        }
+        // Always update localValue from server — it reflects the actual device state.
+        // NOTE: We do NOT update lastManualMode here — that must only change when
+        // the user explicitly clicks Manual On / Manual Off.
         setLocalValue(actuator.value);
         setAppliedOverrideState(actuator.override?.state ?? null);
-    }, [actuator.controlMode, actuator.value, actuator.override]);
+    }, [actuator.controlMode, actuator.value, actuator.override, appliedRuleState]);
 
     const normalizedMode = localMode?.toLowerCase() ?? "off";
     const isManualMode = normalizedMode === "on" || normalizedMode === "off";
     const isManualOn = normalizedMode === "on";
     const hasActiveOverride = appliedOverrideState !== null;
 
-    // Priority: active override > manual mode > raw sensor value (Auto/Schedule)
-    const isOn = hasActiveOverride
-        ? appliedOverrideState          // override is active — it wins
-        : isManualMode
-            ? isManualOn                // Manual On/Off — mode IS the state
-            : localValue === 1;         // Auto/Schedule — live sensor reading
+    // Priority: active rule target state > active override > manual mode > raw sensor value (Auto/Schedule)
+    const isOn = appliedRuleState !== null
+        ? appliedRuleState              // rule created/edited — immediately updates current state
+        : hasActiveOverride
+            ? appliedOverrideState      // override is active — it wins
+            : isManualMode
+                ? isManualOn            // Manual On/Off — mode IS the state
+                : localValue === 1;     // Auto/Schedule — live sensor reading
 
     const displayName = actuatorTypeInfo?.displayName || actuator.actuatorType;
     const showMenu = isAdmin || canManage;
@@ -115,9 +152,10 @@ export default function ActuatorCard({
         setClearingOverride(true);
         // Optimistically remove override — restore underlying mode/sensor state
         setAppliedOverrideState(null);
+        setAppliedRuleState(null);
         try {
             await deleteActuatorOverride(actuator.id);
-            onModeChanged?.();
+            refreshAfterModeChange();
         } catch (err: unknown) {
             // Rollback
             setAppliedOverrideState(prevApplied);
@@ -133,12 +171,13 @@ export default function ActuatorCard({
         setModeError(null);
         // Optimistically update Current State immediately
         setAppliedOverrideState(overrideState);
+        setAppliedRuleState(null);
         try {
             const expiresAt = overrideDuration !== null
                 ? new Date(Date.now() + overrideDuration * 60 * 1000).toISOString()
                 : null;
             await setActuatorOverride(actuator.id, { state: overrideState, expiresAt });
-            onModeChanged?.();
+            refreshAfterModeChange();
         } catch (err: unknown) {
             // Rollback on failure
             setAppliedOverrideState(prevApplied);
@@ -161,21 +200,44 @@ export default function ActuatorCard({
         const prevValue = localValue;
         const prevAppliedOverride = appliedOverrideState;
 
-        // Optimistically update mode & current state when switching Manual On / Off
+        pendingModeRef.current = newMode;
+        // Optimistically update mode & current state
         setLocalMode(newMode);
         // Changing mode removes active override per API contract
         setAppliedOverrideState(null);
+        setAppliedRuleState(null);
+
         if (newMode === "On") {
+            // Manual On — remember this as the last explicit manual state
+            setLastManualMode("On");
             setLocalValue(1);
         } else if (newMode === "Off") {
+            // Manual Off — remember this as the last explicit manual state
+            setLastManualMode("Off");
             setLocalValue(0);
+        } else if (newMode === "Auto") {
+            // Under Auto, immediately evaluate enabled rules against live sensor telemetry!
+            getActuatorRules(actuator.id)
+                .then(async (rules) => {
+                    const matchedTarget = await evaluateEnabledActuatorRules(rules, sensors);
+                    if (matchedTarget !== null) {
+                        setAppliedRuleState(matchedTarget);
+                        setLocalValue(matchedTarget ? 1 : 0);
+                    } else {
+                        // No enabled rules matched conditions — defaults to off (0)
+                        setAppliedRuleState(false);
+                        setLocalValue(0);
+                    }
+                })
+                .catch(() => {});
         }
 
         setChangingMode(true);
         try {
             await setActuatorMode(actuator.id, newMode);
-            onModeChanged?.();
+            refreshAfterModeChange();
         } catch (err: unknown) {
+            pendingModeRef.current = null;
             setLocalMode(prevMode);
             setLocalValue(prevValue);
             setAppliedOverrideState(prevAppliedOverride);
@@ -184,6 +246,38 @@ export default function ActuatorCard({
             setChangingMode(false);
         }
     };
+
+    const handleRulesChanged = (targetState?: boolean) => {
+        if (typeof targetState === "boolean") {
+            setAppliedRuleState(targetState);
+            setLocalValue(targetState ? 1 : 0);
+        }
+        refreshAfterModeChange();
+    };
+
+    // ── Auto-refresh after mode changes ───────────────────────────
+    // After every mode/override change, schedule delayed follow-ups
+    // (300ms, 1.5s, 3.5s) so the backend state has time to settle and commit.
+    const refreshTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+    const clearRefreshTimers = useCallback(() => {
+        refreshTimersRef.current.forEach(clearTimeout);
+        refreshTimersRef.current = [];
+    }, []);
+
+    const refreshAfterModeChange = useCallback(() => {
+        clearRefreshTimers();
+        // Give backend a 300ms window to persist state before the first read
+        const t0 = setTimeout(() => onModeChanged?.(), 300);
+        const t1 = setTimeout(() => onModeChanged?.(), 1500);
+        const t2 = setTimeout(() => onModeChanged?.(), 3500);
+        refreshTimersRef.current = [t0, t1, t2];
+    }, [onModeChanged, clearRefreshTimers]);
+
+    // Clean up timers on unmount
+    useEffect(() => {
+        return () => clearRefreshTimers();
+    }, [clearRefreshTimers]);
 
     // Close menu when clicking outside
     useEffect(() => {
@@ -374,13 +468,17 @@ export default function ActuatorCard({
                         >
                             <button
                                 type="button"
-                                disabled={changingMode || !actuator.isRemoteEnabled}
+                                disabled={!actuator.isRemoteEnabled}
                                 onClick={() => {
-                                    if (!isManualMode) {
-                                        handleQuickModeChange(isOn ? "On" : "Off");
+                                    if (!changingMode && !isManualMode) {
+                                        // Restore the LAST MANUAL STATE the user explicitly set.
+                                        // This is intentionally NOT the auto/server state —
+                                        // e.g. if user set Manual-On before switching to Auto,
+                                        // switching back to Manual should show On again.
+                                        handleQuickModeChange(lastManualMode);
                                     }
                                 }}
-                                className={`rounded-lg py-1.5 text-xs font-semibold transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${isManualMode
+                                className={`rounded-lg py-1.5 text-xs font-semibold transition-all duration-200 ease-in-out cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${isManualMode
                                     ? "bg-[#004C4B] dark:bg-[#00E5A3] text-white dark:text-[#001A1A] shadow-xs"
                                     : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
                                     }`}
@@ -389,9 +487,9 @@ export default function ActuatorCard({
                             </button>
                             <button
                                 type="button"
-                                disabled={changingMode || !actuator.isRemoteEnabled}
-                                onClick={() => handleQuickModeChange("Auto")}
-                                className={`rounded-lg py-1.5 text-xs font-semibold transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${normalizedMode === "auto"
+                                disabled={!actuator.isRemoteEnabled}
+                                onClick={() => !changingMode && handleQuickModeChange("Auto")}
+                                className={`rounded-lg py-1.5 text-xs font-semibold transition-all duration-200 ease-in-out cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${normalizedMode === "auto"
                                     ? "bg-[#004C4B] dark:bg-[#00E5A3] text-white dark:text-[#001A1A] shadow-xs"
                                     : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
                                     }`}
@@ -400,9 +498,9 @@ export default function ActuatorCard({
                             </button>
                             <button
                                 type="button"
-                                disabled={changingMode || !actuator.isRemoteEnabled}
-                                onClick={() => handleQuickModeChange("Schedule")}
-                                className={`rounded-lg py-1.5 text-xs font-semibold transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${normalizedMode === "schedule"
+                                disabled={!actuator.isRemoteEnabled}
+                                onClick={() => !changingMode && handleQuickModeChange("Schedule")}
+                                className={`rounded-lg py-1.5 text-xs font-semibold transition-all duration-200 ease-in-out cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${normalizedMode === "schedule"
                                     ? "bg-[#004C4B] dark:bg-[#00E5A3] text-white dark:text-[#001A1A] shadow-xs"
                                     : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
                                     }`}
@@ -425,9 +523,9 @@ export default function ActuatorCard({
                             <div className="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-800 p-0.5 border border-gray-200 dark:border-gray-700">
                                 <button
                                     type="button"
-                                    disabled={changingMode || !actuator.isRemoteEnabled}
-                                    onClick={() => handleQuickModeChange("Off")}
-                                    className={`px-3 py-1 rounded-full text-[11px] font-semibold transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${!isManualOn
+                                    disabled={!actuator.isRemoteEnabled}
+                                    onClick={() => !changingMode && handleQuickModeChange("Off")}
+                                    className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all duration-200 ease-in-out cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${!isManualOn
                                         ? "bg-gray-700 text-white dark:bg-gray-200 dark:text-gray-900 shadow-xs"
                                         : "text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
                                         }`}
@@ -436,9 +534,9 @@ export default function ActuatorCard({
                                 </button>
                                 <button
                                     type="button"
-                                    disabled={changingMode || !actuator.isRemoteEnabled}
-                                    onClick={() => handleQuickModeChange("On")}
-                                    className={`px-3 py-1 rounded-full text-[11px] font-semibold transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${isManualOn
+                                    disabled={!actuator.isRemoteEnabled}
+                                    onClick={() => !changingMode && handleQuickModeChange("On")}
+                                    className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all duration-200 ease-in-out cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${isManualOn
                                         ? "bg-[#004C4B] dark:bg-[#00E5A3] text-white dark:text-[#001A1A] shadow-xs"
                                         : "text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
                                         }`}
@@ -449,40 +547,6 @@ export default function ActuatorCard({
                         </div>
                     )}
                 </div>
-                {/* <div className="flex flex-row gap-5">
-                    {/* Rules Button */}
-                {/* <button
-                    type="button"
-                    onClick={() => setIsRulesOpen(true)}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-[#004C4B]/25 dark:border-[#00E5A3]/30 bg-white dark:bg-[#1A1A1E] text-[11px] font-semibold text-[#004C4B] dark:text-[#00E5A3] hover:bg-[#E8F2EF] dark:hover:bg-[#102A27] transition cursor-pointer shadow-2xs"
-                    title="Configure Auto Rules"
-                >
-                    <Sliders size={11} />
-                    <span>Rules</span>
-                </button> */}
-
-                {/* Schedule Button */}
-                {/* <button
-                    type="button"
-                    onClick={() => setIsSchedulesOpen(true)}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-[#004C4B]/25 dark:border-[#00E5A3]/30 bg-white dark:bg-[#1A1A1E] text-[11px] font-semibold text-[#004C4B] dark:text-[#00E5A3] hover:bg-[#E8F2EF] dark:hover:bg-[#102A27] transition cursor-pointer shadow-2xs"
-                    title="Configure Actuator Schedules"
-                >
-                    <Calendar size={11} />
-                    <span>Schedule</span>
-                </button> */}
-
-                {/* History Button */}
-                {/* <button
-                    type="button"
-                    onClick={handleGoToHistory}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-[#004C4B]/25 dark:border-[#00E5A3]/30 bg-white dark:bg-[#1A1A1E] text-[11px] font-semibold text-[#004C4B] dark:text-[#00E5A3] hover:bg-[#E8F2EF] dark:hover:bg-[#102A27] transition cursor-pointer shadow-2xs"
-                    title="View Actuator History"
-                >
-                    <History size={11} />
-                    <span>History</span>
-                </button>
-            </div> */}
 
                 <div className="flex flex-wrap items-center gap-2">
                     {/* Rules Button */}
@@ -617,7 +681,7 @@ export default function ActuatorCard({
             {/* Current State */}
             <div className="pt-2 border-t border-gray-200/80 dark:border-gray-800/80 flex items-center justify-between">
                 <span className="text-xs text-gray-500 dark:text-gray-400">Current State</span>
-                {localValue !== null ? (
+                {localValue !== null || appliedRuleState !== null || hasActiveOverride ? (
                     <span
                         className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${isOn
                             ? "bg-[#D7E8DF] text-[#1E5440] dark:bg-[#1C3A32] dark:text-[#6EE7B7]"
@@ -667,8 +731,9 @@ export default function ActuatorCard({
                 actuator={actuator}
                 isOpen={isRulesOpen}
                 canManage={canManage}
+                sensorsList={sensors}
                 onClose={() => setIsRulesOpen(false)}
-                onRulesChanged={onModeChanged}
+                onRulesChanged={handleRulesChanged}
             />
 
             {/* Actuator Schedules Modal */}

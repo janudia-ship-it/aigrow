@@ -189,7 +189,7 @@ export default function DeviceDetailView({
             </div>
 
             {/* Loading State */}
-            {loading && (
+            {loading && !device && (
                 <div className="rounded-2xl border border-gray-200 dark:border-gray-800 p-8 sm:p-10 bg-white dark:bg-[#0D0D0D] text-center shadow-xs">
                     <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#004C4B] dark:border-[#00E5A3] mb-3" />
                     <p className="text-sm text-gray-500 dark:text-gray-400">Loading device details...</p>
@@ -197,7 +197,7 @@ export default function DeviceDetailView({
             )}
 
             {/* Error State */}
-            {error && !loading && (
+            {error && !device && (
                 <div className="rounded-2xl border border-red-200 dark:border-red-800 p-6 sm:p-8 bg-white dark:bg-[#0D0D0D] text-center shadow-xs">
                     <AlertCircle className="mx-auto text-red-500 mb-2" size={28} />
                     <p className="text-sm font-semibold text-red-600 dark:text-red-400 mb-1">{error}</p>
@@ -212,7 +212,7 @@ export default function DeviceDetailView({
             )}
 
             {/* Device Content */}
-            {!loading && !error && device && (
+            {device && (
                 <div className="space-y-5 sm:space-y-6">
                     {/* Device Summary Card */}
                     <div className="rounded-2xl border border-gray-200 dark:border-gray-800 p-4 sm:p-6 sm:p-7 bg-white dark:bg-[#0D0D0D] shadow-xs">
@@ -515,6 +515,7 @@ export default function DeviceDetailView({
                                         canManage={canManageActuators}
                                         isAdmin={isAuthorizedAdmin}
                                         deviceId={device.id}
+                                        sensors={device.sensors}
                                         onRename={(a: Actuator) => setRenamingActuator(a)}
                                         onUpdateActuator={(a: Actuator) => setUpdatingActuator(a)}
                                         onUpdateArea={(a: Actuator) => setAreaActuator(a)}

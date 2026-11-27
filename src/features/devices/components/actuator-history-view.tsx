@@ -133,7 +133,7 @@ export default function ActuatorHistoryView({
             .then((dev) => {
                 if (isMounted) setDevice(dev);
             })
-            .catch(() => {})
+            .catch(() => { })
             .finally(() => {
                 if (isMounted) setLoadingDevice(false);
             });
@@ -350,12 +350,12 @@ export default function ActuatorHistoryView({
                 m.mode?.toLowerCase() === "on"
                     ? "on"
                     : m.mode?.toLowerCase() === "off"
-                    ? "off"
-                    : m.mode?.toLowerCase() === "auto"
-                    ? "auto"
-                    : m.mode?.toLowerCase() === "schedule"
-                    ? "schedule"
-                    : "neutral";
+                        ? "off"
+                        : m.mode?.toLowerCase() === "auto"
+                            ? "auto"
+                            : m.mode?.toLowerCase() === "schedule"
+                                ? "schedule"
+                                : "neutral";
 
             items.push({
                 id: `mode_${idx}_${m.from}`,
@@ -592,8 +592,8 @@ export default function ActuatorHistoryView({
                                         seg.status === 1
                                             ? "ON"
                                             : seg.status === 0
-                                            ? "OFF"
-                                            : "Not known"
+                                                ? "OFF"
+                                                : "Not known"
                                     }
                                 />
                             );
@@ -656,13 +656,12 @@ export default function ActuatorHistoryView({
                                     {/* Mode / Target Badge */}
                                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#18181B] text-gray-700 dark:text-gray-200 shadow-2xs font-medium">
                                         <span
-                                            className={`h-1.5 w-1.5 rounded-full ${
-                                                item.badge.type === "on"
-                                                    ? "bg-emerald-500"
-                                                    : item.badge.type === "off"
+                                            className={`h-1.5 w-1.5 rounded-full ${item.badge.type === "on"
+                                                ? "bg-emerald-500"
+                                                : item.badge.type === "off"
                                                     ? "bg-gray-400 dark:bg-gray-500"
                                                     : "bg-teal-500"
-                                            }`}
+                                                }`}
                                         />
                                         <span>{item.badge.text}</span>
                                     </span>
